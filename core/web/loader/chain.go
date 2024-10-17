@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/graph-gophers/dataloader"
+
 	commonTypes "github.com/smartcontractkit/chainlink-common/pkg/types"
 
 	"github.com/smartcontractkit/chainlink/v2/common/types"
@@ -16,7 +17,7 @@ type chainBatcher struct {
 	app chainlink.Application
 }
 
-// DEPRECATED: loadByChainIDs is deprecated and we should be using loadByRelayIDs.
+// Deprecated: use loadByChainIDs is deprecated and we should be using loadByRelayIDs.
 func (b *chainBatcher) loadByIDs(ctx context.Context, keys dataloader.Keys) []*dataloader.Result {
 	// Create a map for remembering the order of keys passed in
 	keyOrder := make(map[string]int, len(keys))

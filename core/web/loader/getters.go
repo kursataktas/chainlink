@@ -20,7 +20,7 @@ import (
 var ErrInvalidType = errors.New("invalid type")
 
 // GetChainByID fetches the chain by it's id.
-// DEPRECATED: use GetChainByRelayID.
+// Deprecated: use GetChainByRelayID.
 func GetChainByID(ctx context.Context, id string) (*commonTypes.ChainStatusWithID, error) {
 	ldr := For(ctx)
 
