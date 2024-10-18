@@ -224,18 +224,20 @@ func (c *MultiNode[CHAIN_ID, RPC]) selectNode() (node Node[CHAIN_ID, RPC], err e
 		return // another goroutine beat us here
 	}
 
+	var prevNodeName string
 	if c.activeNode != nil {
+		prevNodeName = c.activeNode.Name()
 		c.activeNode.UnsubscribeAllExceptAliveLoop()
 	}
 	c.activeNode = c.nodeSelector.Select()
-
 	if c.activeNode == nil {
 		c.lggr.Criticalw("No live RPC nodes available", "NodeSelectionMode", c.nodeSelector.Name())
 		errmsg := fmt.Errorf("no live nodes available for chain %s", c.chainID.String())
 		c.SvcErrBuffer.Append(errmsg)
-		err = ErroringNodeError
+		return nil, ErroringNodeError
 	}
 
+	c.lggr.Debugw("Switched to a new active node due to prev node heath issues", "prevNode", prevNodeName, "newNode", c.activeNode.Name())
 	return c.activeNode, err
 }
 
