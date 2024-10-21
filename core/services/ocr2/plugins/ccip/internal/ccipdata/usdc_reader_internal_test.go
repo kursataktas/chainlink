@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-common/pkg/utils/tests"
 
 	"github.com/smartcontractkit/chainlink/v2/core/chains/evm/client"
 	"github.com/smartcontractkit/chainlink/v2/core/chains/evm/headtracker"
@@ -35,8 +36,9 @@ func TestLogPollerClient_GetUSDCMessagePriorToLogIndexInTx(t *testing.T) {
 	lggr := logger.Test(t)
 
 	t.Run("multiple found - selected last", func(t *testing.T) {
+		ctx := tests.Context(t)
 		lp := lpmocks.NewLogPoller(t)
-		u, _ := NewUSDCReader(lggr, "job_123", utils.RandomAddress(), lp, false)
+		u, _ := NewUSDCReader(ctx, lggr, "job_123", utils.RandomAddress(), lp, false)
 
 		lp.On("IndexedLogsByTxHash",
 			mock.Anything,
@@ -56,8 +58,9 @@ func TestLogPollerClient_GetUSDCMessagePriorToLogIndexInTx(t *testing.T) {
 	})
 
 	t.Run("multiple found - selected first", func(t *testing.T) {
+		ctx := tests.Context(t)
 		lp := lpmocks.NewLogPoller(t)
-		u, _ := NewUSDCReader(lggr, "job_123", utils.RandomAddress(), lp, false)
+		u, _ := NewUSDCReader(ctx, lggr, "job_123", utils.RandomAddress(), lp, false)
 
 		lp.On("IndexedLogsByTxHash",
 			mock.Anything,
@@ -77,8 +80,9 @@ func TestLogPollerClient_GetUSDCMessagePriorToLogIndexInTx(t *testing.T) {
 	})
 
 	t.Run("logs fetched from memory in subsequent calls", func(t *testing.T) {
+		ctx := tests.Context(t)
 		lp := lpmocks.NewLogPoller(t)
-		u, _ := NewUSDCReader(lggr, "job_123", utils.RandomAddress(), lp, false)
+		u, _ := NewUSDCReader(ctx, lggr, "job_123", utils.RandomAddress(), lp, false)
 
 		lp.On("IndexedLogsByTxHash",
 			mock.Anything,
@@ -106,8 +110,9 @@ func TestLogPollerClient_GetUSDCMessagePriorToLogIndexInTx(t *testing.T) {
 	})
 
 	t.Run("none found", func(t *testing.T) {
+		ctx := tests.Context(t)
 		lp := lpmocks.NewLogPoller(t)
-		u, _ := NewUSDCReader(lggr, "job_123", utils.RandomAddress(), lp, false)
+		u, _ := NewUSDCReader(ctx, lggr, "job_123", utils.RandomAddress(), lp, false)
 		lp.On("IndexedLogsByTxHash",
 			mock.Anything,
 			u.usdcMessageSent,
@@ -137,6 +142,7 @@ func TestParse(t *testing.T) {
 
 func TestFilters(t *testing.T) {
 	t.Run("filters of different jobs should be distinct", func(t *testing.T) {
+		ctx := tests.Context(t)
 		lggr := logger.Test(t)
 		chainID := testutils.NewRandomEVMChainID()
 		db := pgtest.NewSqlxDB(t)
@@ -163,15 +169,15 @@ func TestFilters(t *testing.T) {
 		f1 := logpoller.FilterName("USDC message sent", jobID1, transmitter.Hex())
 		f2 := logpoller.FilterName("USDC message sent", jobID2, transmitter.Hex())
 
-		_, err := NewUSDCReader(lggr, jobID1, transmitter, lp, true)
+		_, err := NewUSDCReader(ctx, lggr, jobID1, transmitter, lp, true)
 		assert.NoError(t, err)
 		assert.True(t, lp.HasFilter(f1))
 
-		_, err = NewUSDCReader(lggr, jobID2, transmitter, lp, true)
+		_, err = NewUSDCReader(ctx, lggr, jobID2, transmitter, lp, true)
 		assert.NoError(t, err)
 		assert.True(t, lp.HasFilter(f2))
 
-		err = CloseUSDCReader(lggr, jobID2, transmitter, lp)
+		err = CloseUSDCReader(ctx, lggr, jobID2, transmitter, lp)
 		assert.NoError(t, err)
 		assert.True(t, lp.HasFilter(f1))
 		assert.False(t, lp.HasFilter(f2))

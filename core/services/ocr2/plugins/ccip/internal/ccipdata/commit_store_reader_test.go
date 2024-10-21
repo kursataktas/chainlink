@@ -180,7 +180,7 @@ func TestCommitStoreReaders(t *testing.T) {
 	ge.On("L1Oracle").Return(lm)
 
 	maxGasPrice := big.NewInt(1e8)
-	c12r, err := factory.NewCommitStoreReader(lggr, factory.NewEvmVersionFinder(), ccipcalc.EvmAddrToGeneric(addr2), ec, lp)
+	c12r, err := factory.NewCommitStoreReader(ctx, lggr, factory.NewEvmVersionFinder(), ccipcalc.EvmAddrToGeneric(addr2), ec, lp)
 	require.NoError(t, err)
 	err = c12r.SetGasEstimator(ctx, ge)
 	require.NoError(t, err)
@@ -360,6 +360,7 @@ func TestNewCommitStoreReader(t *testing.T) {
 	}
 	for _, tc := range tt {
 		t.Run(tc.typeAndVersion, func(t *testing.T) {
+			ctx := context.Background()
 			b, err := utils.ABIEncode(`[{"type":"string"}]`, tc.typeAndVersion)
 			require.NoError(t, err)
 			c := evmclientmocks.NewClient(t)
@@ -369,7 +370,7 @@ func TestNewCommitStoreReader(t *testing.T) {
 			if tc.expectedErr == "" {
 				lp.On("RegisterFilter", mock.Anything, mock.Anything).Return(nil)
 			}
-			_, err = factory.NewCommitStoreReader(logger.Test(t), factory.NewEvmVersionFinder(), addr, c, lp)
+			_, err = factory.NewCommitStoreReader(ctx, logger.Test(t), factory.NewEvmVersionFinder(), addr, c, lp)
 			if tc.expectedErr != "" {
 				require.EqualError(t, err, tc.expectedErr)
 			} else {

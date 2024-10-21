@@ -808,7 +808,8 @@ func setupNodes(t *testing.T, nNodes int, backend *backends.SimulatedBackend, cl
 		nodes = append(nodes, Node{
 			app, transmitter, kb, observedLogs,
 		})
-		offchainPublicKey, _ := hex.DecodeString(strings.TrimPrefix(kb.OnChainPublicKey(), "0x"))
+		offchainPublicKey, err := hex.DecodeString(strings.TrimPrefix(kb.OnChainPublicKey(), "0x"))
+		require.NoError(t, err)
 		oracles = append(oracles, confighelper.OracleIdentityExtra{
 			OracleIdentity: confighelper.OracleIdentity{
 				OnchainPublicKey:  offchainPublicKey,

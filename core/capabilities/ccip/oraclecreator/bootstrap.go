@@ -139,7 +139,7 @@ func (i *bootstrapOracleCreator) Type() cctypes.OracleType {
 }
 
 // Create implements types.OracleCreator.
-func (i *bootstrapOracleCreator) Create(_ uint32, config cctypes.OCR3ConfigWithMeta) (cctypes.CCIPOracle, error) {
+func (i *bootstrapOracleCreator) Create(ctx context.Context, _ uint32, config cctypes.OCR3ConfigWithMeta) (cctypes.CCIPOracle, error) {
 	// Assuming that the chain selector is referring to an evm chain for now.
 	// TODO: add an api that returns chain family.
 	// NOTE: this doesn't really matter for the bootstrap node, it doesn't do anything on-chain.
@@ -157,10 +157,12 @@ func (i *bootstrapOracleCreator) Create(_ uint32, config cctypes.OCR3ConfigWithM
 		oraclePeerIDs = append(oraclePeerIDs, n.P2pID)
 	}
 
-	ctx := context.Background()
 	rmnHomeReader, err := i.getRmnHomeReader(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get RMNHome reader: %w", err)
+	}
+	if err = rmnHomeReader.Start(ctx); err != nil {
+		return nil, fmt.Errorf("failed to start RMNHome reader: %w", err)
 	}
 
 	pgd := newPeerGroupDialer(
