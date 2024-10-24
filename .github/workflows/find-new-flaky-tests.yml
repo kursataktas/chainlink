@@ -57,6 +57,8 @@ on:
 
 env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
+  # Exclude paths other than main go project
+  EXCLUDE_PATHS: "integration-tests,dashboard-lib,chainlink-relay,tools/goreleaser-config"
 
 jobs:
   find-tests:
@@ -81,7 +83,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@8a3cb55eac2c091399d7f5b65c8279f8b0c465d3
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
 
       - name: Find new or updated test packages
         id: find-tests
@@ -93,7 +95,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=${{ inputs.baseRef }})
+          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $PACKAGES
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
@@ -107,7 +109,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=${{ inputs.baseRef }})
+          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $TEST_FILES
           echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
           
@@ -232,7 +234,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@8a3cb55eac2c091399d7f5b65c8279f8b0c465d3
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
 
       - name: Run tests with flakeguard
         shell: bash
@@ -304,7 +306,7 @@ jobs:
         run: |
           echo "## Flaky Test Detection Summary" >> $GITHUB_STEP_SUMMARY
           echo "### Comparative Test Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "Find flaky tests for changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`." >> $GITHUB_STEP_SUMMARY
+          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Changed Test Files to GitHub Summary
         if: ${{ needs.find-tests.outputs.changed_test_files != '' && inputs.findByTestFilesDiff && !inputs.findByAffectedPackages }}
@@ -365,8 +367,7 @@ jobs:
 
       - name: Send Slack message
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
-        if: ${{ inputs.slack_notification_after_tests_channel_id != ''}}
-        # if: ${{ inputs.slack_notification_after_tests_channel_id != '' && contains(join(needs.*.result, ','), 'failure')}}
+        if: ${{ inputs.slack_notification_after_tests_channel_id != '' && steps.set_test_results.outputs.all_tests != '[]' }}
         id: slack
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -389,7 +390,7 @@ jobs:
                       "type": "section",
                       "text": {
                         "type": "mrkdwn",
-                        "text": "Executed for changes between `${{ inputs.baseRef }}` and `${{ env.GIT_HEAD_REF }}`"
+                        "text": "Checked changes between `${{ inputs.baseRef }}` and `${{ env.GIT_HEAD_REF }}`"
                       }
                     },
                     {
