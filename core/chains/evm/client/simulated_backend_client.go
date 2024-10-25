@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 	"testing"
@@ -18,10 +19,9 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/smartcontractkit/chainlink-common/pkg/utils/hex"
-
 	"github.com/smartcontractkit/chainlink-common/pkg/assets"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
+	"github.com/smartcontractkit/chainlink-common/pkg/utils/hex"
 
 	commonclient "github.com/smartcontractkit/chainlink/v2/common/client"
 	evmtypes "github.com/smartcontractkit/chainlink/v2/core/chains/evm/types"
@@ -319,9 +319,12 @@ func (c *SimulatedBackendClient) SubscribeToHeads(
 			case h := <-ch:
 				var head *evmtypes.Head
 				if h != nil {
+					if h.Time > math.MaxInt64 {
+						c.t.Fatalf("time overflows int64: %d", h.Time)
+					}
 					head = &evmtypes.Head{
 						Difficulty: h.Difficulty,
-						Timestamp:  time.Unix(int64(h.Time), 0), //nolint:gosec
+						Timestamp:  time.Unix(int64(h.Time), 0), //nolint:gosec // G115 false positive
 						Number:     h.Number.Int64(),
 						Hash:       h.Hash(),
 						ParentHash: h.ParentHash,

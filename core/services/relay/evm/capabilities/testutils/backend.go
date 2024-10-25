@@ -3,6 +3,7 @@ package testutils
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -56,9 +57,10 @@ func NewEVMBackendTH(t *testing.T) *EVMBackendTH {
 		contractsOwner.From: {Balance: assets.Ether(100000).ToInt()},
 	}
 	chainID := testutils.SimulatedChainID
-	gasLimit := uint32(ethconfig.Defaults.Miner.GasCeil) //nolint:gosec
-	backend := cltest.NewSimulatedBackend(t, genesisData, gasLimit)
-	blockTime := time.UnixMilli(int64(backend.Blockchain().CurrentHeader().Time)) //nolint:gosec
+	require.LessOrEqual(t, ethconfig.Defaults.Miner.GasCeil, math.MaxUint32)
+	backend := cltest.NewSimulatedBackend(t, genesisData, uint32(ethconfig.Defaults.Miner.GasCeil)) //nolint:gosec // G115 false positive
+	require.LessOrEqual(t, backend.Blockchain().CurrentHeader().Time, math.MaxInt64)
+	blockTime := time.UnixMilli(int64(backend.Blockchain().CurrentHeader().Time)) //nolint:gosec // G115 false positive
 	err = backend.AdjustTime(time.Since(blockTime) - 24*time.Hour)
 	require.NoError(t, err)
 	backend.Commit()

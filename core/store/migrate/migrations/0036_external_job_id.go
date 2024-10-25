@@ -31,7 +31,6 @@ const (
     `
 )
 
-// nolint
 func Up36(ctx context.Context, tx *sql.Tx) error {
 	// Add the external ID column and remove type specific ones.
 	if _, err := tx.ExecContext(ctx, up36_1); err != nil {

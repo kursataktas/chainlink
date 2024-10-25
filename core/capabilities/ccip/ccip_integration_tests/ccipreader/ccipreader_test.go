@@ -79,7 +79,7 @@ func TestCCIPReader_CommitReportsGTETimestamp(t *testing.T) {
 	tokenA := common.HexToAddress("123")
 	const numReports = 5
 
-	for i := 0; i < numReports; i++ {
+	for i := uint8(0); i < numReports; i++ {
 		_, err := s.contract.EmitCommitReportAccepted(s.auth, ccip_reader_tester.OffRampCommitReport{
 			PriceUpdates: ccip_reader_tester.InternalPriceUpdates{
 				TokenPriceUpdates: []ccip_reader_tester.InternalTokenPriceUpdate{
@@ -100,7 +100,7 @@ func TestCCIPReader_CommitReportsGTETimestamp(t *testing.T) {
 					SourceChainSelector: uint64(chainS1),
 					MinSeqNr:            10,
 					MaxSeqNr:            20,
-					MerkleRoot:          [32]byte{uint8(i) + 1}, //nolint:gosec // this won't overflow
+					MerkleRoot:          [32]byte{i + 1},
 					OnRampAddress:       common.LeftPadBytes(onRampAddress.Bytes(), 32),
 				},
 			},

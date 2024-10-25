@@ -137,7 +137,6 @@ func (d *DON) Initialise() {
 	if len(d.externalCapabilities) > 0 {
 		id := d.capabilitiesRegistry.setupDON(d.config, d.externalCapabilities)
 
-		//nolint:gosec // disable G115
 		d.config.DON.ID = uint32(id)
 	}
 }
