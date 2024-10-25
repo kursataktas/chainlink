@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	tc "github.com/testcontainers/testcontainers-go"
@@ -33,7 +34,7 @@ var (
 	ErrFundCLNode = "failed to fund CL node"
 )
 
-type CLClusterTestEnv struct {
+type ClusterTestEnv struct {
 	Cfg           *TestEnvConfig
 	DockerNetwork *tc.DockerNetwork
 	LogStream     *logstream.LogStream
@@ -41,6 +42,7 @@ type CLClusterTestEnv struct {
 
 	/* components */
 	ClCluster              *ClCluster
+	RmnCluster             *RmnCluster
 	MockAdapter            *test_env.Killgrave
 	PrivateEthereumConfigs []*ctf_config.EthereumNetworkConfig
 	EVMNetworks            []*blockchain.EVMNetwork
@@ -51,21 +53,23 @@ type CLClusterTestEnv struct {
 	isSimulatedNetwork     bool
 }
 
-func NewTestEnv() (*CLClusterTestEnv, error) {
+func NewTestEnv() (*ClusterTestEnv, error) {
 	log.Logger = logging.GetLogger(nil, "CORE_DOCKER_ENV_LOG_LEVEL")
 	network, err := docker.CreateNetwork(log.Logger)
 	if err != nil {
 		return nil, err
 	}
-	return &CLClusterTestEnv{
+	return &ClusterTestEnv{
 		DockerNetwork: network,
 		l:             log.Logger,
+		ClCluster:     &ClCluster{},
+		RmnCluster:    &RmnCluster{},
 	}, nil
 }
 
 // WithTestEnvConfig sets the test environment cfg.
 // Sets up private ethereum chain and MockAdapter containers with the provided cfg.
-func (te *CLClusterTestEnv) WithTestEnvConfig(cfg *TestEnvConfig) *CLClusterTestEnv {
+func (te *ClusterTestEnv) WithTestEnvConfig(cfg *TestEnvConfig) *ClusterTestEnv {
 	te.Cfg = cfg
 	if cfg.MockAdapter.ContainerName != "" {
 		n := []string{te.DockerNetwork.Name}
@@ -74,7 +78,7 @@ func (te *CLClusterTestEnv) WithTestEnvConfig(cfg *TestEnvConfig) *CLClusterTest
 	return te
 }
 
-func (te *CLClusterTestEnv) WithTestInstance(t *testing.T) *CLClusterTestEnv {
+func (te *ClusterTestEnv) WithTestInstance(t *testing.T) *ClusterTestEnv {
 	te.t = t
 	te.l = logging.GetTestLogger(t)
 	if te.MockAdapter != nil {
@@ -83,7 +87,7 @@ func (te *CLClusterTestEnv) WithTestInstance(t *testing.T) *CLClusterTestEnv {
 	return te
 }
 
-func (te *CLClusterTestEnv) StartEthereumNetwork(cfg *ctf_config.EthereumNetworkConfig) (blockchain.EVMNetwork, test_env.RpcProvider, error) {
+func (te *ClusterTestEnv) StartEthereumNetwork(cfg *ctf_config.EthereumNetworkConfig) (blockchain.EVMNetwork, test_env.RpcProvider, error) {
 	// if environment is being restored from a previous state, use the existing config
 	// this might fail terribly if temporary folders with chain data on the host machine were removed
 	if te.Cfg != nil && te.Cfg.EthereumNetworkConfig != nil {
@@ -114,7 +118,7 @@ func (te *CLClusterTestEnv) StartEthereumNetwork(cfg *ctf_config.EthereumNetwork
 	return n, rpc, nil
 }
 
-func (te *CLClusterTestEnv) StartJobDistributor(cfg *ccip.JDConfig) error {
+func (te *ClusterTestEnv) StartJobDistributor(cfg *ccip.JDConfig) error {
 	jdDB, err := test_env.NewPostgresDb(
 		[]string{te.DockerNetwork.Name},
 		test_env.WithPostgresDbName(cfg.GetJDDBName()),
@@ -141,11 +145,11 @@ func (te *CLClusterTestEnv) StartJobDistributor(cfg *ccip.JDConfig) error {
 	return nil
 }
 
-func (te *CLClusterTestEnv) StartMockAdapter() error {
+func (te *ClusterTestEnv) StartMockAdapter() error {
 	return te.MockAdapter.StartContainer()
 }
 
-func (te *CLClusterTestEnv) StartClCluster(nodeConfig *chainlink.Config, count int, secretsConfig string, testconfig ctf_config.GlobalTestConfig, opts ...ClNodeOption) error {
+func (te *ClusterTestEnv) StartClCluster(nodeConfig *chainlink.Config, count int, secretsConfig string, testconfig ctf_config.GlobalTestConfig, opts ...ClNodeOption) error {
 	if te.Cfg != nil && te.Cfg.ClCluster != nil {
 		te.ClCluster = te.Cfg.ClCluster
 	} else {
@@ -176,10 +180,80 @@ func (te *CLClusterTestEnv) StartClCluster(nodeConfig *chainlink.Config, count i
 	}
 
 	// Start/attach node containers
+	te.l.Info().Msgf("Starting CL cluster with %d nodes", count)
 	return te.ClCluster.Start()
 }
 
-func (te *CLClusterTestEnv) Terminate() error {
+func (te *ClusterTestEnv) StartRmnCluster(count int) error {
+	sharedConfig := SharedConfig{}
+	localConfig := LocalConfig{}
+
+	// TODO: This configuration is not coming from the right places; it's
+	// just a temporary solution while I work out the path to get everything that's needed
+	// here (including lane configs)
+	for i := 0; i < len(te.EVMNetworks); i++ {
+		net := te.EVMNetworks[i]
+
+		// TODO(pablo): this config is fairly arbitrary
+		sharedChain := SharedChain{
+			// TODO(pablo): only limited names are allowed, unsure how to engage with simulated networks here.
+			Name:                         "Ethereum",
+			MaxTaggedRootsPerVoteToBless: 10,
+			AfnType:                      "V1_0",
+			// TODO work out the AFN contract address on this chain. This is a sepolia stub
+			AfnContract:  "0xb4d360459f32dd641ef5a6985ffbac5c4e5521aa",
+			InflightTime: Duration{Minutes: 5},
+			// TODO this should be 2*block interval for the chain. Figure out where to obtain that information
+			MaxFreshBlockAge: Duration{Seconds: 24},
+			UponFinalityViolationVoteToCurseOnOtherChainsWithLegacyContracts: true,
+			Stability: StabilityConfig{
+				Type:              "FinalityTag",
+				SoftConfirmations: 0,
+			},
+			BlessFeeConfig: FeeConfig{
+				Type: "Eip1559",
+				MaxFeePerGas: &Gwei{
+					Gwei: 1000,
+				},
+				MaxPriorityFeePerGas: &Gwei{
+					Gwei: 50,
+				},
+			},
+			CurseFeeConfig: FeeConfig{
+				Type: "Eip1559",
+				MaxFeePerGas: &Gwei{
+					Gwei: 2000,
+				},
+				MaxPriorityFeePerGas: &Gwei{
+					Gwei: 200,
+				},
+			},
+		}
+
+		sharedConfig.Chains = append(sharedConfig.Chains, sharedChain)
+		localChain := Chain{
+			Name: "Ethereum",
+			RPCS: te.rpcProviders[net.ChainID].PrivateHttpUrls(),
+		}
+		localConfig.Chains = append(localConfig.Chains, localChain)
+
+		// No lanes since this is just a barebones test environment.
+	}
+
+	for i := 0; i < count; i++ {
+		nodeDefaultCName := fmt.Sprintf("%s-%s", "rmn-node", uuid.NewString()[0:8])
+		// TODO: make the image name/version configurable
+		rmnNode, err := NewRmnNode([]string{te.DockerNetwork.Name}, nodeDefaultCName, "rmn", "latest", sharedConfig, localConfig, te.LogStream)
+		if err != nil {
+			return err
+		}
+		te.RmnCluster.Nodes = append(te.RmnCluster.Nodes, rmnNode)
+	}
+	te.l.Info().Msgf("Starting RMN cluster with %d nodes", count)
+	return te.RmnCluster.Start()
+}
+
+func (te *ClusterTestEnv) Terminate() error {
 	// TESTCONTAINERS_RYUK_DISABLED=false by default so ryuk will remove all
 	// the containers and the Network
 	return nil
@@ -190,7 +264,7 @@ type CleanupOpts struct {
 }
 
 // Cleanup cleans the environment up after it's done being used, mainly for returning funds when on live networks and logs.
-func (te *CLClusterTestEnv) Cleanup(opts CleanupOpts) error {
+func (te *ClusterTestEnv) Cleanup(opts CleanupOpts) error {
 	te.l.Info().Msg("Cleaning up test environment")
 
 	runIdErr := runid.RemoveLocalRunId(te.TestConfig.GetLoggingConfig().RunId)
@@ -217,7 +291,7 @@ func (te *CLClusterTestEnv) Cleanup(opts CleanupOpts) error {
 }
 
 // handleNodeCoverageReports handles the coverage reports for the chainlink nodes
-func (te *CLClusterTestEnv) handleNodeCoverageReports(testName string) error {
+func (te *ClusterTestEnv) handleNodeCoverageReports(testName string) error {
 	testName = strings.ReplaceAll(testName, "/", "_")
 	showHTMLCoverageReport := te.TestConfig.GetLoggingConfig().ShowHTMLCoverageReport != nil && *te.TestConfig.GetLoggingConfig().ShowHTMLCoverageReport
 	isCI := os.Getenv("CI") != ""
@@ -296,7 +370,7 @@ func getChainlinkDir() (string, error) {
 	return chainlinkDir, nil
 }
 
-func (te *CLClusterTestEnv) logWhetherAllContainersAreRunning() {
+func (te *ClusterTestEnv) logWhetherAllContainersAreRunning() {
 	for _, node := range te.ClCluster.Nodes {
 		if node.Container == nil {
 			continue
@@ -315,7 +389,7 @@ func (te *CLClusterTestEnv) logWhetherAllContainersAreRunning() {
 	}
 }
 
-func (te *CLClusterTestEnv) GetRpcProvider(chainId int64) (*test_env.RpcProvider, error) {
+func (te *ClusterTestEnv) GetRpcProvider(chainId int64) (*test_env.RpcProvider, error) {
 	if rpc, ok := te.rpcProviders[chainId]; ok {
 		return rpc, nil
 	}
@@ -323,7 +397,7 @@ func (te *CLClusterTestEnv) GetRpcProvider(chainId int64) (*test_env.RpcProvider
 	return nil, fmt.Errorf("no RPC provider available for chain ID %d", chainId)
 }
 
-func (te *CLClusterTestEnv) GetFirstEvmNetwork() (*blockchain.EVMNetwork, error) {
+func (te *ClusterTestEnv) GetFirstEvmNetwork() (*blockchain.EVMNetwork, error) {
 	if len(te.EVMNetworks) == 0 {
 		return nil, fmt.Errorf("no EVM networks available")
 	}
@@ -331,7 +405,7 @@ func (te *CLClusterTestEnv) GetFirstEvmNetwork() (*blockchain.EVMNetwork, error)
 	return te.EVMNetworks[0], nil
 }
 
-func (te *CLClusterTestEnv) GetEVMNetworkForChainId(chainId int64) (*blockchain.EVMNetwork, error) {
+func (te *ClusterTestEnv) GetEVMNetworkForChainId(chainId int64) (*blockchain.EVMNetwork, error) {
 	for _, network := range te.EVMNetworks {
 		if network.ChainID == chainId {
 			return network, nil

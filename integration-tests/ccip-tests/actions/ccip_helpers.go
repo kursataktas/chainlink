@@ -781,7 +781,6 @@ func (ccipModule *CCIPCommon) DeployContracts(
 	noOfTokens int,
 	tokenDeployerFns []blockchain.ContractDeployer,
 	conf *laneconfig.LaneConfig,
-	useRealRmnContract bool,
 ) error {
 	var err error
 	cd := ccipModule.Deployer
@@ -798,23 +797,16 @@ func (ccipModule *CCIPCommon) DeployContracts(
 			if ccipModule.ExistingDeployment {
 				return fmt.Errorf("ARM contract address is not provided in lane config")
 			}
-			if useRealRmnContract {
-				ccipModule.RMNContract, err = cd.DeployRMNContract()
-				if err != nil {
-					return fmt.Errorf("deploying RMN contract shouldn't fail %w", err)
-				}
-				conf.ARM = ccipModule.RMNContract.Hex()
-				arm, err := cd.NewRMNContract(*ccipModule.RMNContract)
-				if err != nil {
-					return fmt.Errorf("getting new ARM contract shouldn't fail %w", err)
-				}
-				ccipModule.ARM = arm
-			} else {
-				ccipModule.RMNContract, err = cd.DeployMockRMNContract()
-				if err != nil {
-					return fmt.Errorf("deploying mock ARM contract shouldn't fail %w", err)
-				}
+			ccipModule.RMNContract, err = cd.DeployRMNContract()
+			if err != nil {
+				return fmt.Errorf("deploying RMN contract shouldn't fail %w", err)
 			}
+			conf.ARM = ccipModule.RMNContract.Hex()
+			arm, err := cd.NewRMNContract(*ccipModule.RMNContract)
+			if err != nil {
+				return fmt.Errorf("getting new ARM contract shouldn't fail %w", err)
+			}
+			ccipModule.ARM = arm
 			err = ccipModule.ChainClient.WaitForEvents()
 			if err != nil {
 				return fmt.Errorf("error in waiting for ARM deployment %w", err)
@@ -4027,7 +4019,7 @@ merge [type=merge left="{}" right="{%s}"];`, source, right)
 
 type CCIPTestEnv struct {
 	MockServer               *ctfClient.MockserverClient
-	LocalCluster             *test_env.CLClusterTestEnv
+	LocalCluster             *test_env.ClusterTestEnv
 	CLNodesWithKeys          map[string][]*client.CLNodesWithKeys // key - network chain-id
 	CLNodes                  []*client.ChainlinkK8sClient
 	nodeMutexes              []*sync.Mutex

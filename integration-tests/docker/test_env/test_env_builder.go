@@ -51,12 +51,13 @@ type CLTestEnvBuilder struct {
 	clNodeConfig                    *chainlink.Config
 	secretsConfig                   string
 	clNodesCount                    int
+	rmnNodesCount                   int
 	clNodesOpts                     []func(*ClNode)
 	customNodeCsaKeys               []string
 	defaultNodeCsaKeys              []string
 	l                               zerolog.Logger
 	t                               *testing.T
-	te                              *CLClusterTestEnv
+	te                              *ClusterTestEnv
 	isEVM                           bool
 	cleanUpType                     CleanUpType
 	cleanUpCustomFn                 func()
@@ -99,7 +100,7 @@ func NewCLTestEnvBuilder() *CLTestEnvBuilder {
 // If nil, a new test environment is created.
 // If not nil, the test environment is used as-is.
 // If TEST_ENV_CONFIG_PATH is set, the test environment is created with the config at that path.
-func (b *CLTestEnvBuilder) WithTestEnv(te *CLClusterTestEnv) (*CLTestEnvBuilder, error) {
+func (b *CLTestEnvBuilder) WithTestEnv(te *ClusterTestEnv) (*CLTestEnvBuilder, error) {
 	envConfigPath, isSet := os.LookupEnv("TEST_ENV_CONFIG_PATH")
 	var cfg *TestEnvConfig
 	var err error
@@ -151,6 +152,11 @@ func (b *CLTestEnvBuilder) WithChainlinkNodeLogScanner(settings ChainlinkNodeLog
 
 func (b *CLTestEnvBuilder) WithCLNodes(clNodesCount int) *CLTestEnvBuilder {
 	b.clNodesCount = clNodesCount
+	return b
+}
+
+func (b *CLTestEnvBuilder) WithRmnNodes(rmnNodesCount int) *CLTestEnvBuilder {
+	b.rmnNodesCount = rmnNodesCount
 	return b
 }
 
@@ -229,7 +235,7 @@ func (b *CLTestEnvBuilder) WithEVMNetworkOptions(opts ...EVMNetworkOption) *CLTe
 	return b
 }
 
-func (b *CLTestEnvBuilder) Build() (*CLClusterTestEnv, error) {
+func (b *CLTestEnvBuilder) Build() (*ClusterTestEnv, error) {
 	if b.testConfig == nil {
 		return nil, fmt.Errorf("test config must be set")
 	}
@@ -289,7 +295,7 @@ func (b *CLTestEnvBuilder) Build() (*CLClusterTestEnv, error) {
 
 					// we cannot do parallel processing here, because ProcessContainerLogs() locks a mutex that controls whether
 					// new logs can be added to the log stream, so parallel processing would get stuck on waiting for it to be unlocked
-				LogScanningLoop:
+				ClLogScanningLoop:
 					for i := 0; i < b.clNodesCount; i++ {
 						// if something went wrong during environment setup we might not have all nodes, and we don't want an NPE
 						if b == nil || b.te == nil || b.te.ClCluster == nil || b.te.ClCluster.Nodes == nil || len(b.te.ClCluster.Nodes)-1 < i || b.te.ClCluster.Nodes[i] == nil {
@@ -303,10 +309,29 @@ func (b *CLTestEnvBuilder) Build() (*CLClusterTestEnv, error) {
 						} else if err != nil && (strings.Contains(err.Error(), testreporters.MultipleLogsAtLogLevelErr) || strings.Contains(err.Error(), testreporters.OneLogAtLogLevelErr)) {
 							flushLogStream = true
 							b.t.Errorf("Found a concerning log in Chainklink Node logs: %v", err)
-							break LogScanningLoop
+							break ClLogScanningLoop
 						}
 					}
 					b.l.Info().Msg("Finished scanning Chainlink Node logs for concerning errors")
+
+				RmnLogScanningLoop:
+					for i := 0; i < b.rmnNodesCount; i++ {
+						// if something went wrong during environment setup we might not have all nodes, and we don't want an NPE
+						if b == nil || b.te == nil || b.te.RmnCluster == nil || b.te.RmnCluster.Nodes == nil || len(b.te.RmnCluster.Nodes)-1 < i || b.te.RmnCluster.Nodes[i] == nil {
+							continue
+						}
+						// ignore count return, because we are only interested in the error
+						_, err := logProcessor.ProcessContainerLogs(b.te.RmnCluster.Nodes[i].ContainerName, processFn)
+						if err != nil && !strings.Contains(err.Error(), testreporters.MultipleLogsAtLogLevelErr) && !strings.Contains(err.Error(), testreporters.OneLogAtLogLevelErr) {
+							b.l.Error().Err(err).Msg("Error processing RMN node logs")
+							continue
+						} else if err != nil && (strings.Contains(err.Error(), testreporters.MultipleLogsAtLogLevelErr) || strings.Contains(err.Error(), testreporters.OneLogAtLogLevelErr)) {
+							flushLogStream = true
+							b.t.Errorf("Found a concerning log in RMN Node logs: %v", err)
+							break RmnLogScanningLoop
+						}
+					}
+					b.l.Info().Msg("Finished scanning RMN Node logs for concerning errors")
 				}
 
 				if flushLogStream {
@@ -549,6 +574,14 @@ func (b *CLTestEnvBuilder) Build() (*CLClusterTestEnv, error) {
 			return nil, err
 		}
 		b.defaultNodeCsaKeys = nodeCsaKeys
+	}
+
+	// Start Rmn Nodes
+	if b.rmnNodesCount > 0 {
+		err = b.te.StartRmnCluster(b.rmnNodesCount)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var enDesc string

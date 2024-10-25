@@ -47,7 +47,7 @@ import (
 // The test environment is then used to start chainlink nodes
 func CreateDockerEnv(t *testing.T) (
 	*EnvironmentConfig,
-	*test_env.CLClusterTestEnv,
+	*test_env.ClusterTestEnv,
 	tc.TestConfig,
 ) {
 	if _, err := os.Stat(".env"); err == nil || !os.IsNotExist(err) {
@@ -137,7 +137,7 @@ func StartChainlinkNodes(
 	t *testing.T,
 	envConfig *EnvironmentConfig,
 	registryConfig deployment.CapabilityRegistryConfig,
-	env *test_env.CLClusterTestEnv,
+	env *test_env.ClusterTestEnv,
 	cfg tc.TestConfig,
 ) error {
 	var evmNetworks []blockchain.EVMNetwork
@@ -217,7 +217,7 @@ func StartChainlinkNodes(
 // FundNodes sends funds to the chainlink nodes based on the provided test config
 // It also sets up a clean-up function to return the funds back to the deployer account once the test is done
 // It assumes that the chainlink nodes are already started and the account addresses for all chains are available
-func FundNodes(t *testing.T, lggr zerolog.Logger, env *test_env.CLClusterTestEnv, cfg tc.TestConfig, nodes []Node) {
+func FundNodes(t *testing.T, lggr zerolog.Logger, env *test_env.ClusterTestEnv, cfg tc.TestConfig, nodes []Node) {
 	evmNetworks := networks.MustGetSelectedNetworkConfig(cfg.GetNetworkConfig())
 	for i, net := range evmNetworks {
 		// if network is simulated, update the URLs with deployed chain RPCs in the docker test environment
@@ -290,7 +290,7 @@ func FundNodes(t *testing.T, lggr zerolog.Logger, env *test_env.CLClusterTestEnv
 // It uses the private keys from the network config to create the deployer key for each chain.
 func CreateChainConfigFromNetworks(
 	t *testing.T,
-	env *test_env.CLClusterTestEnv,
+	env *test_env.ClusterTestEnv,
 	privateEthereumNetworks []*ctf_config.EthereumNetworkConfig,
 	networkConfig *ctf_config.NetworkConfig,
 ) []ChainConfig {
@@ -350,7 +350,7 @@ func CreateChainConfigFromNetworks(
 }
 
 // RestartChainlinkNodes restarts the chainlink nodes in the test environment
-func RestartChainlinkNodes(t *testing.T, env *test_env.CLClusterTestEnv) error {
+func RestartChainlinkNodes(t *testing.T, env *test_env.ClusterTestEnv) error {
 	errGrp := errgroup.Group{}
 	if env == nil || env.ClCluster == nil {
 		return errors.Wrap(errors.New("no testenv or clcluster found "), "error restarting node")

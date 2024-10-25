@@ -237,7 +237,7 @@ func SendRequest(t *testing.T, e deployment.Environment, state CCIPOnChainState,
 // DeployedLocalDevEnvironment is a helper struct for setting up a local dev environment with docker
 type DeployedLocalDevEnvironment struct {
 	DeployedEnv
-	testEnv *test_env.CLClusterTestEnv
+	testEnv *test_env.ClusterTestEnv
 	DON     *devenv.DON
 }
 
@@ -260,7 +260,7 @@ func (d DeployedLocalDevEnvironment) RestartChainlinkNodes(t *testing.T) error {
 	return errGrp.Wait()
 }
 
-func NewLocalDevEnvironment(t *testing.T, lggr logger.Logger) (DeployedEnv, *test_env.CLClusterTestEnv, testconfig.TestConfig) {
+func NewLocalDevEnvironment(t *testing.T, lggr logger.Logger) (DeployedEnv, *test_env.ClusterTestEnv, testconfig.TestConfig) {
 	ctx := testcontext.Get(t)
 	// create a local docker environment with simulated chains and job-distributor
 	// we cannot create the chainlink nodes yet as we need to deploy the capability registry first

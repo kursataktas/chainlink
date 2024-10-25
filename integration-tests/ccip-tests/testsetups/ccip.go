@@ -616,7 +616,7 @@ func (o *CCIPTestSetUpOutputs) DeployChainContracts(
 
 	cfg := o.LaneConfig.ReadLaneConfig(networkCfg.Name)
 
-	err = ccipCommon.DeployContracts(noOfTokens, tokenDeployerFns, cfg, networkCfg.UseRealRMN)
+	err = ccipCommon.DeployContracts(noOfTokens, tokenDeployerFns, cfg)
 	if err != nil {
 		return errors.WithStack(fmt.Errorf("failed to deploy common ccip contracts for %s: %w", networkCfg.Name, err))
 	}
@@ -1261,7 +1261,7 @@ func (o *CCIPTestSetUpOutputs) CreateEnvironment(
 		k8Env    *environment.Environment
 		err      error
 		chains   []blockchain.EVMClient
-		local    *test_env.CLClusterTestEnv
+		local    *test_env.ClusterTestEnv
 		deployCL func() error
 	)
 

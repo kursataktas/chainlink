@@ -29,8 +29,8 @@ const (
 )
 
 type Chain struct {
-	Name string `toml:"name"`
-	RPC  string `toml:"rpc"`
+	Name string   `toml:"name"`
+	RPCS []string `toml:"rpcs"`
 }
 
 type SharedConfig struct {
@@ -116,24 +116,26 @@ func CreateTempFile(data []byte, pattern string) (string, error) {
 	return file.Name(), nil
 }
 
-type RMNNode struct {
+type RmnNode struct {
 	test_env.EnvComponent
 	AFNPassphrase  string
 	Shared         SharedConfig
 	Local          LocalConfig
 	BlessCurseKeys map[string]BlessCurseKeys
+	t              *testing.T
+	l              zerolog.Logger
 }
 
-func NewRMNNode(
+func NewRmnNode(
 	networks []string,
 	name,
 	imageName,
 	imageVersion string,
 	shared SharedConfig,
 	local LocalConfig,
-	logStream *logstream.LogStream) (*RMNNode, error) {
+	logStream *logstream.LogStream) (*RmnNode, error) {
 	afnName := fmt.Sprintf("%s-%s", name, uuid.NewString()[0:8])
-	rmn := &RMNNode{
+	rmn := &RmnNode{
 		EnvComponent: test_env.EnvComponent{
 			ContainerName:    afnName,
 			ContainerImage:   imageName,
@@ -149,39 +151,40 @@ func NewRMNNode(
 	return rmn, nil
 }
 
-func (rmn *RMNNode) Start(t *testing.T, lggr zerolog.Logger, reuse bool) (tc.Container, error) {
+func (rmn *RmnNode) StartContainer(reuse bool) error {
 	localAFN2Proxy, err := rmn.Local.afn2ProxyLocalConfigFile()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	sharedAFN2Proxy, err := rmn.Shared.afn2ProxySharedConfigFile()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	l := tc.Logger
-	if t != nil {
+	if rmn.t != nil {
 		l = logging.CustomT{
-			T: t,
-			L: lggr,
+			T: rmn.t,
+			L: rmn.l,
 		}
 	}
-	container, err := docker.StartContainerWithRetry(lggr, tc.GenericContainerRequest{
+	container, err := docker.StartContainerWithRetry(rmn.l, tc.GenericContainerRequest{
 		ContainerRequest: tc.ContainerRequest{
 			Name:  rmn.ContainerName,
 			Image: fmt.Sprintf("%s:%s", rmn.ContainerImage, rmn.ContainerVersion),
 			Env: map[string]string{
 				"AFN_PASSPHRASE": rmn.AFNPassphrase,
 			},
+			Networks: append(rmn.Networks, "tracing"),
 			Files: []tc.ContainerFile{
 				{
 					HostFilePath:      sharedAFN2Proxy,
-					ContainerFilePath: "/app/cfg/afn2proxy-shared.toml",
+					ContainerFilePath: "/app/cfg/afn2proxy_shared.toml",
 					FileMode:          0644,
 				},
 				{
 					HostFilePath:      localAFN2Proxy,
-					ContainerFilePath: "/app/cfg/afn2proxy-local.toml",
+					ContainerFilePath: "/app/cfg/afn2proxy_local.toml",
 					FileMode:          0644,
 				},
 			},
@@ -199,24 +202,24 @@ func (rmn *RMNNode) Start(t *testing.T, lggr zerolog.Logger, reuse bool) (tc.Con
 		Logger:  l,
 	})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	_, reader, err := container.Exec(context.Background(), []string{
 		"cat", RMNKeyStore}, exec.Multiplexed())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to cat keystore")
+		return errors.Wrapf(err, "Unable to cat keystore")
 	}
 	b, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	blessCurseKeys, err := parseBlessCurseKeys(b)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to extract peerID %s", string(b))
+		return errors.Wrapf(err, "Unable to extract peerID %s", string(b))
 	}
 	rmn.BlessCurseKeys = blessCurseKeys
 	rmn.Container = container
-	return container, nil
+	return nil
 }
 
 // Define the structure for BlessCurseKeys

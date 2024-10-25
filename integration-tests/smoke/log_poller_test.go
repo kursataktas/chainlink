@@ -272,7 +272,7 @@ func executeLogPollerReplay(t *testing.T, consistencyTimeout string) {
 type logPollerEnvironment struct {
 	sethClient    *seth.Client
 	logEmitters   []*contracts.LogEmitter
-	testEnv       *test_env.CLClusterTestEnv
+	testEnv       *test_env.ClusterTestEnv
 	registry      contracts.KeeperRegistry
 	upkeepIDs     []*big.Int
 	upKeepsNeeded int

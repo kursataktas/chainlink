@@ -352,7 +352,7 @@ func FundNodesIfNeeded(ctx context.Context, existingEnvConfig *vrf_common_config
 	return nil
 }
 
-func BuildNewCLEnvForVRF(l zerolog.Logger, t *testing.T, envConfig VRFEnvConfig, newEnvConfig NewEnvConfig, network ctf_test_env.EthereumNetwork) (*test_env.CLClusterTestEnv, *seth.Client, error) {
+func BuildNewCLEnvForVRF(l zerolog.Logger, t *testing.T, envConfig VRFEnvConfig, newEnvConfig NewEnvConfig, network ctf_test_env.EthereumNetwork) (*test_env.ClusterTestEnv, *seth.Client, error) {
 	env, err := test_env.NewCLTestEnvBuilder().
 		WithTestInstance(t).
 		WithTestConfig(&envConfig.TestConfig).
@@ -392,7 +392,7 @@ func LoadExistingCLEnvForVRF(
 	envConfig VRFEnvConfig,
 	commonExistingEnvConfig *vrf_common_config.ExistingEnvConfig,
 	l zerolog.Logger,
-) (*test_env.CLClusterTestEnv, *seth.Client, error) {
+) (*test_env.ClusterTestEnv, *seth.Client, error) {
 	env, err := test_env.NewCLTestEnvBuilder().
 		WithTestInstance(t).
 		WithTestConfig(&envConfig.TestConfig).
@@ -416,7 +416,7 @@ func LoadExistingCLEnvForVRF(
 	return env, sethClient, nil
 }
 
-func GetRPCUrl(env *test_env.CLClusterTestEnv, chainID int64) (string, error) {
+func GetRPCUrl(env *test_env.ClusterTestEnv, chainID int64) (string, error) {
 	provider, err := env.GetRpcProvider(chainID)
 	if err != nil {
 		return "", err

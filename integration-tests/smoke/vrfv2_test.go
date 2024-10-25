@@ -45,7 +45,7 @@ var vrfv2CleanUpFn = func(
 	t **testing.T,
 	sethClient **seth.Client,
 	config **tc.TestConfig,
-	testEnv **test_env.CLClusterTestEnv,
+	testEnv **test_env.ClusterTestEnv,
 	vrfContracts **vrfcommon.VRFContracts,
 	subIDsForCancellingAfterTest *[]uint64,
 	walletAddress **string,
@@ -90,7 +90,7 @@ var vrfv2CleanUpFn = func(
 func TestVRFv2Basic(t *testing.T) {
 	t.Parallel()
 	var (
-		testEnv                      *test_env.CLClusterTestEnv
+		testEnv                      *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData
@@ -590,7 +590,7 @@ func TestVRFv2Basic(t *testing.T) {
 func TestVRFv2MultipleSendingKeys(t *testing.T) {
 	t.Parallel()
 	var (
-		testEnv                      *test_env.CLClusterTestEnv
+		testEnv                      *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData
@@ -682,7 +682,7 @@ func TestVRFv2MultipleSendingKeys(t *testing.T) {
 func TestVRFOwner(t *testing.T) {
 	t.Parallel()
 	var (
-		testEnv                      *test_env.CLClusterTestEnv
+		testEnv                      *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData
@@ -800,7 +800,7 @@ func TestVRFOwner(t *testing.T) {
 func TestVRFV2WithBHS(t *testing.T) {
 	t.Parallel()
 	var (
-		testEnv                      *test_env.CLClusterTestEnv
+		testEnv                      *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData
@@ -1010,7 +1010,7 @@ func TestVRFV2WithBHS(t *testing.T) {
 func TestVRFV2NodeReorg(t *testing.T) {
 	t.Parallel()
 	var (
-		env                          *test_env.CLClusterTestEnv
+		env                          *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData
@@ -1171,7 +1171,7 @@ func TestVRFV2NodeReorg(t *testing.T) {
 func TestVRFv2BatchFulfillmentEnabledDisabled(t *testing.T) {
 	t.Parallel()
 	var (
-		env                          *test_env.CLClusterTestEnv
+		env                          *test_env.ClusterTestEnv
 		vrfContracts                 *vrfcommon.VRFContracts
 		subIDsForCancellingAfterTest []uint64
 		vrfKey                       *vrfcommon.VRFKeyData

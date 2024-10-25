@@ -79,7 +79,7 @@ func TestOCRJobReplacement(t *testing.T) {
 	require.Equal(t, int64(10), answer.Int64(), "Expected latest answer from OCR contract to be 10 but got %d", answer.Int64())
 }
 
-func prepareORCv1SmokeTestEnv(t *testing.T, l zerolog.Logger, firstRoundResult int64) (*test_env.CLClusterTestEnv, []contracts.OffchainAggregator, *seth.Client) {
+func prepareORCv1SmokeTestEnv(t *testing.T, l zerolog.Logger, firstRoundResult int64) (*test_env.ClusterTestEnv, []contracts.OffchainAggregator, *seth.Client) {
 	config, err := tc.GetConfig([]string{"Smoke"}, tc.OCR)
 	require.NoError(t, err, "Error getting config")
 

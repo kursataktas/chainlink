@@ -36,7 +36,6 @@ import (
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/lock_release_token_pool"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/lock_release_token_pool_1_4_0"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/maybe_revert_message_receiver"
-	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/mock_rmn_contract"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/mock_usdc_token_messenger"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/mock_usdc_token_transmitter"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/mock_v3_aggregator_contract"
@@ -541,15 +540,15 @@ func (e *CCIPContractsDeployer) DeployLockReleaseTokenPoolContract(tokenAddr str
 	}
 }
 
-func (e *CCIPContractsDeployer) DeployMockRMNContract() (*common.Address, error) {
-	address, _, _, err := e.evmClient.DeployContract("Mock ARM Contract", func(
-		auth *bind.TransactOpts,
-		_ bind.ContractBackend,
-	) (common.Address, *types.Transaction, interface{}, error) {
-		return mock_rmn_contract.DeployMockRMNContract(auth, wrappers.MustNewWrappedContractBackend(e.evmClient, nil))
-	})
-	return address, err
-}
+// func (e *CCIPContractsDeployer) DeployMockRMNContract() (*common.Address, error) {
+// 	address, _, _, err := e.evmClient.DeployContract("Mock ARM Contract", func(
+// 		auth *bind.TransactOpts,
+// 		_ bind.ContractBackend,
+// 	) (common.Address, *types.Transaction, interface{}, error) {
+// 		return mock_rmn_contract.DeployMockRMNContract(auth, wrappers.MustNewWrappedContractBackend(e.evmClient, nil))
+// 	})
+// 	return address, err
+// }
 
 func (e *CCIPContractsDeployer) DeployRMNContract() (*common.Address, error) {
 	address, _, _, err := e.evmClient.DeployContract("RMN Contract", func(
@@ -559,8 +558,8 @@ func (e *CCIPContractsDeployer) DeployRMNContract() (*common.Address, error) {
 		config := rmn_contract.RMNConfig{
 			Voters: []rmn_contract.RMNVoter{
 				{
-					BlessVoteAddr: common.HexToAddress("0x02430d05faC19dE178ac610Bda3738a3b2928106"),
-					CurseVoteAddr: common.HexToAddress("0xfCe548a9991d91080aAB844d452a9EDeA9A2597E"),
+					BlessVoteAddr: common.HexToAddress("0x396939EC3b0894781F4131F70aaFF7F6C30aB0E7"),
+					CurseVoteAddr: common.HexToAddress("0xb792bD2FD17C376539901a453150d64d9885fDFf"),
 					BlessWeight:   1,
 					CurseWeight:   1,
 				},

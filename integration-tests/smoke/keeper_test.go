@@ -1227,7 +1227,7 @@ func setupKeeperTest(l zerolog.Logger, t *testing.T, config *tc.TestConfig) (
 	*seth.Client,
 	[]*client.ChainlinkClient,
 	contracts.LinkToken,
-	*test_env.CLClusterTestEnv,
+	*test_env.ClusterTestEnv,
 ) {
 	privateNetwork, err := actions.EthereumNetworkConfigFromConfig(l, config)
 	require.NoError(t, err, "Error building ethereum network config")

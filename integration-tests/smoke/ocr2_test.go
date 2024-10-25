@@ -139,7 +139,7 @@ func TestOCRv2JobReplacement(t *testing.T) {
 	)
 }
 
-func prepareORCv2SmokeTestEnv(t *testing.T, testData ocr2test, l zerolog.Logger, firstRoundResult int) (*test_env.CLClusterTestEnv, []contracts.OffchainAggregatorV2, *seth.Client) {
+func prepareORCv2SmokeTestEnv(t *testing.T, testData ocr2test, l zerolog.Logger, firstRoundResult int) (*test_env.ClusterTestEnv, []contracts.OffchainAggregatorV2, *seth.Client) {
 	config, err := tc.GetConfig([]string{"Smoke"}, tc.OCR2)
 	if err != nil {
 		t.Fatal(err)
@@ -220,7 +220,7 @@ func prepareORCv2SmokeTestEnv(t *testing.T, testData ocr2test, l zerolog.Logger,
 	return testEnv, aggregatorContracts, sethClient
 }
 
-func assertCorrectNodeConfiguration(t *testing.T, l zerolog.Logger, totalNodeCount int, testData ocr2test, testEnv *test_env.CLClusterTestEnv) {
+func assertCorrectNodeConfiguration(t *testing.T, l zerolog.Logger, totalNodeCount int, testData ocr2test, testEnv *test_env.ClusterTestEnv) {
 	expectedNodesWithConfiguration := totalNodeCount - 1 // minus bootstrap node
 	var expectedPatterns []string
 

@@ -87,7 +87,7 @@ type AutomationTest struct {
 	ChainlinkNodesk8s []*client.ChainlinkK8sClient
 	ChainlinkNodes    []*client.ChainlinkClient
 
-	DockerEnv *test_env.CLClusterTestEnv
+	DockerEnv *test_env.ClusterTestEnv
 
 	NodeDetails              []NodeDetails
 	DefaultP2Pv2Bootstrapper string
@@ -162,7 +162,7 @@ func (a *AutomationTest) SetUpkeepPrivilegeManager(address string) {
 	a.UpkeepPrivilegeManager = common.HexToAddress(address)
 }
 
-func (a *AutomationTest) SetDockerEnv(env *test_env.CLClusterTestEnv) {
+func (a *AutomationTest) SetDockerEnv(env *test_env.ClusterTestEnv) {
 	a.DockerEnv = env
 }
 

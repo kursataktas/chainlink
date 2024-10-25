@@ -78,7 +78,7 @@ func CreateVRFV2Job(
 func SetupVRFV2Environment(
 	ctx context.Context,
 	sethClient *seth.Client,
-	env *test_env.CLClusterTestEnv,
+	env *test_env.ClusterTestEnv,
 	chainID int64,
 	nodesToCreate []vrfcommon.VRFNodeType,
 	vrfv2TestConfig types.VRFv2TestConfig,
@@ -299,9 +299,9 @@ func SetupVRFV2Universe(
 	envConfig vrfcommon.VRFEnvConfig,
 	newEnvConfig vrfcommon.NewEnvConfig,
 	l zerolog.Logger,
-) (*test_env.CLClusterTestEnv, *vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, map[vrfcommon.VRFNodeType]*vrfcommon.VRFNode, *seth.Client, error) {
+) (*test_env.ClusterTestEnv, *vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, map[vrfcommon.VRFNodeType]*vrfcommon.VRFNode, *seth.Client, error) {
 	var (
-		env               *test_env.CLClusterTestEnv
+		env               *test_env.ClusterTestEnv
 		vrfContracts      *vrfcommon.VRFContracts
 		vrfKey            *vrfcommon.VRFKeyData
 		nodeTypeToNodeMap map[vrfcommon.VRFNodeType]*vrfcommon.VRFNode
@@ -329,7 +329,7 @@ func SetupVRFV2ForNewEnv(
 	envConfig vrfcommon.VRFEnvConfig,
 	newEnvConfig vrfcommon.NewEnvConfig,
 	l zerolog.Logger,
-) (*vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, *test_env.CLClusterTestEnv, map[vrfcommon.VRFNodeType]*vrfcommon.VRFNode, *seth.Client, error) {
+) (*vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, *test_env.ClusterTestEnv, map[vrfcommon.VRFNodeType]*vrfcommon.VRFNode, *seth.Client, error) {
 	network, err := actions.EthereumNetworkConfigFromConfig(l, &envConfig.TestConfig)
 	if err != nil {
 		return nil, nil, nil, nil, nil, fmt.Errorf("%s, err: %w", "Error building ethereum network config for V2", err)
@@ -369,7 +369,7 @@ func SetupVRFV2ForNewEnv(
 	return vrfContracts, vrfKey, env, nodeTypeToNode, sethClient, nil
 }
 
-func SetupVRFV2ForExistingEnv(t *testing.T, envConfig vrfcommon.VRFEnvConfig, l zerolog.Logger) (*vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, *test_env.CLClusterTestEnv, *seth.Client, error) {
+func SetupVRFV2ForExistingEnv(t *testing.T, envConfig vrfcommon.VRFEnvConfig, l zerolog.Logger) (*vrfcommon.VRFContracts, *vrfcommon.VRFKeyData, *test_env.ClusterTestEnv, *seth.Client, error) {
 	commonExistingEnvConfig := envConfig.TestConfig.VRFv2.ExistingEnvConfig.ExistingEnvConfig
 	env, sethClient, err := vrfcommon.LoadExistingCLEnvForVRF(
 		t,

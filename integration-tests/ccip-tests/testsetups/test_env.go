@@ -254,7 +254,7 @@ func ChainlinkChart(
 func DeployLocalCluster(
 	t *testing.T,
 	testInputs *CCIPTestConfig,
-) (*test_env.CLClusterTestEnv, func() error) {
+) (*test_env.ClusterTestEnv, func() error) {
 	selectedNetworks := testInputs.SelectedNetworks
 
 	privateEthereumNetworks := []*ctf_config.EthereumNetworkConfig{}

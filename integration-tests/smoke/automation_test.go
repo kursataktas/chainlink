@@ -1279,7 +1279,7 @@ func setupAutomationTestDocker(
 	registryConfig.RegistryVersion = registryVersion
 
 	//launch the environment
-	var env *test_env.CLClusterTestEnv
+	var env *test_env.ClusterTestEnv
 	var err error
 	require.NoError(t, err)
 	l.Debug().Msgf("Funding amount: %f", *automationTestConfig.GetCommonConfig().ChainlinkNodeFunding)

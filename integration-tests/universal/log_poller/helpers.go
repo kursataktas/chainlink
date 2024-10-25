@@ -921,7 +921,7 @@ type ChaosPauseData struct {
 }
 
 // ExecuteChaosExperiment executes the configured chaos experiment, which consist of pausing CL node or Postgres containers
-func ExecuteChaosExperiment(l zerolog.Logger, testEnv *test_env.CLClusterTestEnv, sethClient *seth.Client, testConfig *tc.TestConfig, errorCh chan error) {
+func ExecuteChaosExperiment(l zerolog.Logger, testEnv *test_env.ClusterTestEnv, sethClient *seth.Client, testConfig *tc.TestConfig, errorCh chan error) {
 	if testConfig == nil || testConfig.LogPoller.ChaosConfig == nil || *testConfig.LogPoller.ChaosConfig.ExperimentCount == 0 {
 		errorCh <- nil
 		return
@@ -1021,7 +1021,7 @@ func SetupLogPollerTestDocker(
 	contracts.LinkToken,
 	contracts.KeeperRegistry,
 	contracts.KeeperRegistrar,
-	*test_env.CLClusterTestEnv,
+	*test_env.ClusterTestEnv,
 	*blockchain.EVMNetwork,
 ) {
 	l := logging.GetTestLogger(t)
@@ -1031,7 +1031,7 @@ func SetupLogPollerTestDocker(
 	network := networks.MustGetSelectedNetworkConfig(testConfig.Network)[0]
 
 	//launch the environment
-	var env *test_env.CLClusterTestEnv
+	var env *test_env.ClusterTestEnv
 	chainlinkNodeFunding := 0.5
 	l.Debug().Msgf("Funding amount: %f", chainlinkNodeFunding)
 	clNodesCount := 5
@@ -1197,7 +1197,7 @@ func RegisterFiltersAndAssertUniquness(l zerolog.Logger, registry contracts.Keep
 
 // FluentlyCheckIfAllNodesHaveLogCount checks if all CL nodes have the expected log count for the provided block range and expected filters
 // It will retry until the provided duration is reached or until all nodes have the expected log count
-func FluentlyCheckIfAllNodesHaveLogCount(duration string, startBlock, endBlock int64, expectedLogCount int, expectedFilters []ExpectedFilter, l zerolog.Logger, coreLogger core_logger.SugaredLogger, testEnv *test_env.CLClusterTestEnv, chainId int64) (bool, error) {
+func FluentlyCheckIfAllNodesHaveLogCount(duration string, startBlock, endBlock int64, expectedLogCount int, expectedFilters []ExpectedFilter, l zerolog.Logger, coreLogger core_logger.SugaredLogger, testEnv *test_env.ClusterTestEnv, chainId int64) (bool, error) {
 	logCountWaitDuration, err := time.ParseDuration(duration)
 	if err != nil {
 		return false, err

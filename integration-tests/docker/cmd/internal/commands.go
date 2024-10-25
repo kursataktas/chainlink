@@ -15,12 +15,18 @@ import (
 )
 
 var NodeCountFlag = "node-count"
+var RmnNodeCountFlag = "rmn-node-count"
 
 var StartNodesCmd = &cobra.Command{
 	Use:   "start-nodes",
 	Short: "Start Chainlink nodes",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		nodeCount, err := cmd.Flags().GetInt(NodeCountFlag)
+		if err != nil {
+			return err
+		}
+
+		rmnNodeCount, err := cmd.Flags().GetInt(RmnNodeCountFlag)
 		if err != nil {
 			return err
 		}
@@ -46,6 +52,7 @@ var StartNodesCmd = &cobra.Command{
 			WithPrivateEthereumNetwork(network.EthereumNetworkConfig).
 			WithMockAdapter().
 			WithCLNodes(nodeCount).
+			WithRmnNodes(rmnNodeCount).
 			WithoutCleanup().
 			Build()
 		if err != nil {
@@ -65,6 +72,11 @@ func init() {
 		NodeCountFlag,
 		6,
 		"Number of Chainlink nodes",
+	)
+	StartNodesCmd.PersistentFlags().Int(
+		RmnNodeCountFlag,
+		2,
+		"Number of RMN nodes",
 	)
 }
 

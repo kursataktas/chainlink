@@ -185,7 +185,7 @@ func TestVRFJobReplacement(t *testing.T) {
 	}
 }
 
-func prepareVRFtestEnv(t *testing.T, l zerolog.Logger) (*test_env.CLClusterTestEnv, *vrfv1.Contracts, *seth.Client) {
+func prepareVRFtestEnv(t *testing.T, l zerolog.Logger) (*test_env.ClusterTestEnv, *vrfv1.Contracts, *seth.Client) {
 	config, err := tc.GetChainAndTestTypeSpecificConfig("Smoke", tc.VRF)
 	require.NoError(t, err, "Error getting config")
 
