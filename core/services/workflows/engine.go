@@ -1042,7 +1042,7 @@ func (e *Engine) heartbeat(ctx context.Context) {
 			e.logger.Info("shutting down heartbeat")
 			return
 		case <-ticker.C:
-			logCustMsg(e.cma, fmt.Sprintf("engine heartbeat at %s", e.clock.Now().Format(time.RFC3339)), e.logger)
+			logCustMsg(e.cma, "engine heartbeat at: "+e.clock.Now().Format(time.RFC3339), e.logger)
 		}
 	}
 }
@@ -1268,8 +1268,8 @@ func (e *workflowError) Error() string {
 }
 
 func logCustMsg(cma custmsg.Labeler, msg string, log logger.Logger) {
-	err := cma.SendLogAsCustomMessage(msg)
+	err := cma.Emit(msg)
 	if err != nil {
-		log.Errorf("failed to send custom message with msg: %s", msg)
+		log.Errorf("failed to send custom message with msg: %s, err: %v", msg, err)
 	}
 }
