@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -14,8 +15,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/rpc"
 
+	nodev1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/node"
 	"github.com/smartcontractkit/chainlink/deployment"
-	"github.com/smartcontractkit/chainlink/deployment/environment/clo/models"
 
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -94,8 +95,13 @@ func ConfigureContracts(ctx context.Context, lggr logger.Logger, req ConfigureCo
 		return nil, fmt.Errorf("failed to configure registry: %w", err)
 	}
 
+	donInfos, err := DonInfos(req.Dons, req.Env.Offchain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get don infos: %w", err)
+	}
+
 	// now we have the capability registry set up we need to configure the forwarder contracts and the OCR3 contract
-	dons, err := joinInfoAndNodes(cfgRegistryResp.DonInfos, req.Dons, req.RegistryChainSel)
+	dons, err := joinInfoAndNodes(cfgRegistryResp.DonInfos, donInfos, req.RegistryChainSel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to assimilate registry to Dons: %w", err)
 	}
@@ -141,6 +147,71 @@ func DeployContracts(lggr logger.Logger, e *deployment.Environment, chainSel uin
 	}, nil
 }
 
+// DonInfo is DonCapabilities, but expanded to contain node information
+type DonInfo struct {
+	Name         string
+	Nodes        []Node
+	Capabilities []kcr.CapabilitiesRegistryCapability // every capability is hosted on each node
+}
+
+type Node struct {
+	ID           string
+	Name         string
+	PublicKey    *string
+	ChainConfigs []*nodev1.ChainConfig
+}
+
+func NodesFromJD(name string, nodeIDs []string, jd deployment.OffchainClient) ([]Node, error) {
+	var nodes []Node
+	nodesFromJD, err := jd.ListNodes(context.Background(), &nodev1.ListNodesRequest{
+		Filter: &nodev1.ListNodesRequest_Filter{
+			Enabled: 1,
+			Ids:     nodeIDs,
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, nodeID := range nodeIDs {
+		// TODO: Filter should accept multiple nodes
+		nodeChainConfigs, err := jd.ListNodeChainConfigs(context.Background(), &nodev1.ListNodeChainConfigsRequest{Filter: &nodev1.ListNodeChainConfigsRequest_Filter{
+			NodeIds: []string{nodeID},
+		}})
+		if err != nil {
+			return nil, err
+		}
+		idx := slices.IndexFunc(nodesFromJD.GetNodes(), func(node *nodev1.Node) bool { return node.Id == nodeID })
+		if idx < 0 {
+			return nil, fmt.Errorf("node id not found")
+		}
+
+		nodes = append(nodes, Node{
+			ID:        nodeID,
+			Name:      name,
+			PublicKey: &nodesFromJD.Nodes[idx].PublicKey,
+			// PublicKey TODO fetch via ListNodes
+			ChainConfigs: nodeChainConfigs.GetChainConfigs(),
+		})
+	}
+	return nodes, nil
+}
+
+func DonInfos(dons []DonCapabilities, jd deployment.OffchainClient) ([]DonInfo, error) {
+	var donInfos []DonInfo
+	for _, don := range dons {
+		nodes, err := NodesFromJD(don.Name, don.Nodes, jd)
+		if err != nil {
+			return nil, err
+		}
+		donInfos = append(donInfos, DonInfo{
+			Name:         don.Name,
+			Nodes:        nodes,
+			Capabilities: don.Capabilities,
+		})
+	}
+	return donInfos, nil
+}
+
 // ConfigureRegistry configures the registry contract with the given DONS and their capabilities
 // the address book is required to contain the addresses of the deployed registry contract
 func ConfigureRegistry(ctx context.Context, lggr logger.Logger, req ConfigureContractsRequest, addrBook deployment.AddressBook) (*ConfigureContractsResponse, error) {
@@ -157,6 +228,11 @@ func ConfigureRegistry(ctx context.Context, lggr logger.Logger, req ConfigureCon
 		return nil, fmt.Errorf("failed to get contract sets: %w", err)
 	}
 
+	donInfos, err := DonInfos(req.Dons, req.Env.Offchain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get don infos: %w", err)
+	}
+
 	// ensure registry is deployed and get the registry contract and chain
 	var registry *kcr.CapabilitiesRegistry
 	registryChainContracts, ok := contractSetsResp.ContractSets[req.RegistryChainSel]
@@ -171,15 +247,15 @@ func ConfigureRegistry(ctx context.Context, lggr logger.Logger, req ConfigureCon
 
 	// all the subsequent calls to the registry are in terms of nodes
 	// compute the mapping of dons to their nodes for reuse in various registry calls
-	donToOcr2Nodes, err := mapDonsToNodes(req.Dons, true, req.RegistryChainSel)
+	donToOcr2Nodes, err := mapDonsToNodes(donInfos, true, req.RegistryChainSel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to map dons to nodes: %w", err)
 	}
 
 	// TODO: we can remove this abstractions and refactor the functions that accept them to accept []DonCapabilities
 	// they are unnecessary indirection
-	donToCapabilities := mapDonsToCaps(req.Dons)
-	nodeIdToNop, err := nodesToNops(req.Dons, req.RegistryChainSel)
+	donToCapabilities := mapDonsToCaps(donInfos)
+	nodeIdToNop, err := nodesToNops(donInfos, req.RegistryChainSel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to map nodes to nops: %w", err)
 	}
@@ -318,7 +394,7 @@ func ConfigureOCR3Contract(env *deployment.Environment, chainSel uint64, dons []
 	return nil
 }
 
-func ConfigureOCR3ContractFromCLO(env *deployment.Environment, chainSel uint64, nodes []*models.Node, addrBook deployment.AddressBook, cfg *OracleConfigWithSecrets) error {
+func ConfigureOCR3ContractFromCLO(env *deployment.Environment, chainSel uint64, nodes []string, addrBook deployment.AddressBook, cfg *OracleConfigWithSecrets) error {
 	registryChain, ok := env.Chains[chainSel]
 	if !ok {
 		return fmt.Errorf("chain %d not found in environment", chainSel)
@@ -338,9 +414,13 @@ func ConfigureOCR3ContractFromCLO(env *deployment.Environment, chainSel uint64, 
 	if contract == nil {
 		return fmt.Errorf("no ocr3 contract found for chain %d", chainSel)
 	}
+	nodes, err := NodesFromJD("nodes", nodeIDs, env.Offchain)
+	if err != nil {
+		return err
+	}
 	var ocr2nodes []*ocr2Node
 	for _, node := range nodes {
-		n, err := newOcr2NodeFromClo(node, chainSel)
+		n, err := newOcr2NodeFromClo(&node, chainSel)
 		if err != nil {
 			return fmt.Errorf("failed to create ocr2 node from clo node: %w", err)
 		}
