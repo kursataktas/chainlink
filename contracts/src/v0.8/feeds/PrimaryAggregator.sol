@@ -1126,7 +1126,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       address payee = s_payees[transmitterAddress];
       // Poses no re-entrancy issues, because LINK.transfer does not yield
       // control flow.
-      if(s_linkToken.transfer(payee, juelsAmount), "insufficient funds"){
+      if(s_linkToken.transfer(payee, juelsAmount)){
         return InsufficientFunds();
       }
       s_rewardFromAggregatorRoundId[transmitter.index] = s_hotVars.latestAggregatorRoundId;
