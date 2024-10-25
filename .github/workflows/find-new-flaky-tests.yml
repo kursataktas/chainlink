@@ -276,23 +276,26 @@ jobs:
             # Display the combined JSON
             jq . all_test_results.json
             # Set the combined results as an output
-            echo "all_tests_base64=$(jq -c . all_test_results.json | base64 -w 0)" >> "$GITHUB_OUTPUT"
-            echo "all_tests_count=$(jq '. | length' all_test_results.json)" >> "$GITHUB_OUTPUT"
+            all_tests=$(jq -c . all_test_results.json)
+            echo "all_tests_count=$(echo $all_tests | jq 'length')" >> "$GITHUB_OUTPUT"
+            echo "all_tests_base64=$(echo $all_tests | base64 -w 0)" >> "$GITHUB_OUTPUT"
             # Set the failed tests as a separate output
-            echo "failed_tests=$(jq -c 'map(select(.PassRatio < ($runThreshold | tonumber))) | map(.PassRatio |= (. * 100 | tostring + "%"))' all_test_results.json --arg runThreshold '${{ inputs.runThreshold }}')" >> "$GITHUB_OUTPUT"
+            failed_tests=$(jq -c 'map(select(.PassRatio < ($runThreshold | tonumber))) | map(.PassRatio |= (. * 100 | tostring + "%"))' all_test_results.json --arg runThreshold '${{ inputs.runThreshold }}')
+            echo "failed_tests_count=$(echo $failed_tests | jq 'length')" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_base64=$(echo $failed_tests | base64 -w 0)" >> "$GITHUB_OUTPUT"
           else
             echo "No test results directory found."
             echo "all_tests_base64=" >> "$GITHUB_OUTPUT"
             echo "all_tests_count=0" >> "$GITHUB_OUTPUT"
-            echo "failed_tests=[]" >> "$GITHUB_OUTPUT"
-            echo "failed_tests_escaped=[]" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_base64=" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_count=0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create ASCII table with failed test results
-        if: ${{ steps.set_test_results.outputs.failed_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         shell: bash
         run: |
-          echo '${{ steps.set_test_results.outputs.failed_tests }}' | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
+          echo '${{ steps.set_test_results.outputs.failed_tests_base64 }}' | base64 --decode | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
           cat failed_tests_ascii.txt    
 
       - name: Create ASCII table with all test results
@@ -331,7 +334,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Append Failed Tests to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.failed_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         run: |
           ALL_TESTS=$(echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq 'length')
           threshold_percentage=$(echo "${{ inputs.runThreshold }}" | awk '{printf "%.0f", $1 * 100}')
@@ -342,7 +345,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Append Success Note if All Tests Passed
-        if: ${{ steps.set_test_results.outputs.failed_tests == '[]' && fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 && fromJson(steps.set_test_results.outputs.failed_tests_count) == 0 }}
         run: |
           PASSED_TESTS=$(echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq 'length')
           echo "### All Tests Passed! :white_check_mark:" >> $GITHUB_STEP_SUMMARY
