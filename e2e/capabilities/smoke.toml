@@ -18,4 +18,4 @@ user_config_overrides = """
 """
 # path to your capability binaries
 # default directory inside container is "/capabilities/$binary_name"
-#capabilities = ["./ctf", "./ctf2"]
+capabilities = ["./ctf", "./ctf2"]
