@@ -182,7 +182,7 @@ func (o *orm) LatestLocalRegistry(ctx context.Context) (*registrysyncer.LocalReg
 }
 
 func toPeerIDs(ids [][32]byte) []p2ptypes.PeerID {
-	var pids []p2ptypes.PeerID
+	pids := make([]p2ptypes.PeerID, 0, len(ids))
 	for _, id := range ids {
 		pids = append(pids, id)
 	}
@@ -268,9 +268,7 @@ func TestReader_Integration(t *testing.T) {
 		},
 	}
 	configb, err := proto.Marshal(config)
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	cfgs := []kcr.CapabilitiesRegistryCapabilityConfiguration{
 		{
@@ -300,17 +298,17 @@ func TestReader_Integration(t *testing.T) {
 	syncer.AddLauncher(l)
 
 	err = syncer.Sync(ctx, false) // not looking to load from the DB in this specific test.
-	s := l.localRegistry
+	gotState := l.localRegistry
 	require.NoError(t, err)
-	assert.Len(t, s.IDsToCapabilities, 1)
+	assert.Len(t, gotState.IDsToCapabilities, 1)
 
-	gotCap := s.IDsToCapabilities[cid]
+	gotCap := gotState.IDsToCapabilities[cid]
 	assert.Equal(t, registrysyncer.Capability{
 		CapabilityType: capabilities.CapabilityTypeTarget,
 		ID:             "write-chain@1.0.1",
 	}, gotCap)
 
-	assert.Len(t, s.IDsToDONs, 1)
+	assert.Len(t, gotState.IDsToDONs, 1)
 	expectedDON := capabilities.DON{
 		ID:               1,
 		ConfigVersion:    1,
@@ -319,7 +317,7 @@ func TestReader_Integration(t *testing.T) {
 		F:                1,
 		Members:          toPeerIDs(nodeSet),
 	}
-	gotDon := s.IDsToDONs[1]
+	gotDon := gotState.IDsToDONs[1]
 	assert.Equal(t, expectedDON, gotDon.DON)
 	assert.Equal(t, configb, gotDon.CapabilityConfigurations[cid].Config)
 
@@ -359,12 +357,12 @@ func TestReader_Integration(t *testing.T) {
 		},
 	}
 
-	assert.Len(t, s.IDsToNodes, 3)
+	assert.Len(t, gotState.IDsToNodes, 3)
 	assert.Equal(t, map[p2ptypes.PeerID]kcr.INodeInfoProviderNodeInfo{
 		nodeSet[0]: nodesInfo[0],
 		nodeSet[1]: nodesInfo[1],
 		nodeSet[2]: nodesInfo[2],
-	}, s.IDsToNodes)
+	}, gotState.IDsToNodes)
 }
 
 func TestSyncer_DBIntegration(t *testing.T) {
@@ -375,7 +373,9 @@ func TestSyncer_DBIntegration(t *testing.T) {
 	require.NoError(t, err, "AddCapability failed for %s", writeChainCapability.LabelledName)
 	sim.Commit()
 
-	cid, err := reg.GetHashedCapabilityId(&bind.CallOpts{}, writeChainCapability.LabelledName, writeChainCapability.Version)
+	cid := fmt.Sprintf("%s@%s", writeChainCapability.LabelledName, writeChainCapability.Version)
+
+	hid, err := reg.GetHashedCapabilityId(&bind.CallOpts{}, writeChainCapability.LabelledName, writeChainCapability.Version)
 	require.NoError(t, err)
 
 	_, err = reg.AddNodeOperators(owner, []kcr.CapabilitiesRegistryNodeOperator{
@@ -398,30 +398,34 @@ func TestSyncer_DBIntegration(t *testing.T) {
 		randomWord(),
 	}
 
+	encPubKey1 := randomWord()
+	encPubKey2 := randomWord()
+	encPubKey3 := randomWord()
+
 	nodes := []kcr.CapabilitiesRegistryNodeParams{
 		{
 			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
 			NodeOperatorId:      uint32(1),
 			Signer:              signersSet[0],
 			P2pId:               nodeSet[0],
-			EncryptionPublicKey: randomWord(),
-			HashedCapabilityIds: [][32]byte{cid},
+			EncryptionPublicKey: encPubKey1,
+			HashedCapabilityIds: [][32]byte{hid},
 		},
 		{
 			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
 			NodeOperatorId:      uint32(1),
 			Signer:              signersSet[1],
 			P2pId:               nodeSet[1],
-			EncryptionPublicKey: randomWord(),
-			HashedCapabilityIds: [][32]byte{cid},
+			EncryptionPublicKey: encPubKey2,
+			HashedCapabilityIds: [][32]byte{hid},
 		},
 		{
 			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
 			NodeOperatorId:      uint32(1),
 			Signer:              signersSet[2],
 			P2pId:               nodeSet[2],
-			EncryptionPublicKey: randomWord(),
-			HashedCapabilityIds: [][32]byte{cid},
+			EncryptionPublicKey: encPubKey3,
+			HashedCapabilityIds: [][32]byte{hid},
 		},
 	}
 	_, err = reg.AddNodes(owner, nodes)
@@ -443,7 +447,7 @@ func TestSyncer_DBIntegration(t *testing.T) {
 
 	cfgs := []kcr.CapabilitiesRegistryCapabilityConfiguration{
 		{
-			CapabilityId: cid,
+			CapabilityId: hid,
 			Config:       configb,
 		},
 	}
@@ -461,10 +465,9 @@ func TestSyncer_DBIntegration(t *testing.T) {
 
 	factory := newContractReaderFactory(t, sim)
 	syncerORM := newORM(t)
-	syncerORM.ormMock.On("LatestLocalRegistry", mock.Anything).Return(nil, fmt.Errorf("no state found"))
-	syncerORM.ormMock.On("AddLocalRegistry", mock.Anything, mock.Anything).Return(nil)
-	syncer, err := newTestSyncer(logger.TestLogger(t), func() (p2ptypes.PeerID, error) { return p2ptypes.PeerID{}, nil }, factory, regAddress.Hex(), syncerORM)
-	require.NoError(t, err)
+	syncerORM.ormMock.EXPECT().LatestLocalRegistry(mock.Anything).Return(nil, assert.AnError)
+	syncerORM.ormMock.EXPECT().AddLocalRegistry(mock.Anything, mock.Anything).Return(nil)
+	syncer := newTestSyncer(t, logger.TestLogger(t), func() (p2ptypes.PeerID, error) { return p2ptypes.PeerID{}, nil }, factory, regAddress.Hex(), syncerORM)
 	require.NoError(t, syncer.Start(ctx))
 	t.Cleanup(func() {
 		syncerORM.Cleanup()
@@ -486,11 +489,79 @@ func TestSyncer_DBIntegration(t *testing.T) {
 			assert.Equal(t, struct{}{}, val)
 			addLocalRegistryCalled = true
 		case <-timeout:
-			t.Fatal("test timed out; channels did not received data")
+			t.Fatal("test timed out; channels did not receive data")
 		}
 	}
+
+	gotState := l.localRegistry
+	require.NoError(t, err)
+	assert.Len(t, gotState.IDsToCapabilities, 1)
+
+	gotCap := gotState.IDsToCapabilities[cid]
+	assert.Equal(t, registrysyncer.Capability{
+		CapabilityType: capabilities.CapabilityTypeTarget,
+		ID:             "write-chain@1.0.1",
+	}, gotCap)
+
+	assert.Len(t, gotState.IDsToDONs, 1)
+	expectedDON := capabilities.DON{
+		ID:               1,
+		ConfigVersion:    1,
+		IsPublic:         true,
+		AcceptsWorkflows: true,
+		F:                1,
+		Members:          toPeerIDs(nodeSet),
+	}
+	gotDon := gotState.IDsToDONs[1]
+	assert.Equal(t, expectedDON, gotDon.DON)
+	assert.Equal(t, configb, gotDon.CapabilityConfigurations[cid].Config)
+
+	nodesInfo := []kcr.INodeInfoProviderNodeInfo{
+		{
+			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
+			NodeOperatorId:      uint32(1),
+			ConfigCount:         1,
+			WorkflowDONId:       1,
+			Signer:              signersSet[0],
+			P2pId:               nodeSet[0],
+			EncryptionPublicKey: encPubKey1,
+			HashedCapabilityIds: [][32]byte{hid},
+			CapabilitiesDONIds:  []*big.Int{},
+		},
+		{
+			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
+			NodeOperatorId:      uint32(1),
+			ConfigCount:         1,
+			WorkflowDONId:       1,
+			Signer:              signersSet[1],
+			P2pId:               nodeSet[1],
+			EncryptionPublicKey: encPubKey2,
+			HashedCapabilityIds: [][32]byte{hid},
+			CapabilitiesDONIds:  []*big.Int{},
+		},
+		{
+			// The first NodeOperatorId has id 1 since the id is auto-incrementing.
+			NodeOperatorId:      uint32(1),
+			ConfigCount:         1,
+			WorkflowDONId:       1,
+			Signer:              signersSet[2],
+			P2pId:               nodeSet[2],
+			EncryptionPublicKey: encPubKey3,
+			HashedCapabilityIds: [][32]byte{hid},
+			CapabilitiesDONIds:  []*big.Int{},
+		},
+	}
+
+	assert.Len(t, gotState.IDsToNodes, 3)
+	assert.Equal(t, map[p2ptypes.PeerID]kcr.INodeInfoProviderNodeInfo{
+		nodeSet[0]: nodesInfo[0],
+		nodeSet[1]: nodesInfo[1],
+		nodeSet[2]: nodesInfo[2],
+	}, gotState.IDsToNodes)
 }
 
+// TestSyncer_LocalNode verifies that the local registry returns the node pointed to by the
+// local node's p2p id.
 func TestSyncer_LocalNode(t *testing.T) {
 	ctx := tests.Context(t)
 	lggr := logger.TestLogger(t)
@@ -574,15 +645,14 @@ func TestSyncer_LocalNode(t *testing.T) {
 }
 
 func newTestSyncer(
+	t *testing.T,
 	lggr logger.Logger,
 	getPeerID func() (p2ptypes.PeerID, error),
 	relayer registrysyncer.ContractReaderFactory,
 	registryAddress string,
-	orm *orm,
-) (registrysyncer.RegistrySyncer, error) {
+	orm registrysyncer.ORM,
+) registrysyncer.RegistrySyncer {
 	rs, err := registrysyncer.New(lggr, getPeerID, relayer, registryAddress, orm)
-	if err != nil {
-		return nil, err
-	}
-	return rs, nil
+	require.NoError(t, err)
+	return rs
 }
