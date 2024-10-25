@@ -2,8 +2,9 @@ package changeset
 
 import (
 	"fmt"
-	"github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
 	"math/big"
+
+	ccipdeployment "github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
 
 	"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/types"
 

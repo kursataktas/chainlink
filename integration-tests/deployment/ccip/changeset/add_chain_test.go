@@ -1,9 +1,10 @@
 package changeset
 
 import (
-	"github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
 	"testing"
 	"time"
+
+	ccipdeployment "github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
 
 	"github.com/smartcontractkit/chainlink/v2/core/capabilities/ccip/types"
 
