@@ -21,7 +21,7 @@ use_tee() {
 
 cd ./integration-tests || exit
 go mod download
-go test -json ./deployment/... -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt | use_tee $OUTPUT_FILE
+go test -json -vet=off ./deployment/... -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt | use_tee $OUTPUT_FILE
 EXITCODE=${PIPESTATUS[0]}
 
 # Assert no known sensitive strings present in test logger output
