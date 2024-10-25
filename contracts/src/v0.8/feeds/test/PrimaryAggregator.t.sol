@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 
@@ -115,8 +115,8 @@ contract ConfiguredPrimaryAggregatorBaseTest is PrimaryAggregatorBaseTest {
 contract Constructor is PrimaryAggregatorBaseTest {
   function test_constructor() public view {
     // TODO: add more checks here if we want
-    assertEq(aggregator.minAnswer(), MIN_ANSWER, "minAnswer not set correctly");
-    assertEq(aggregator.maxAnswer(), MAX_ANSWER, "maxAnswer not set correctly");
+    assertEq(aggregator.i_minAnswer(), MIN_ANSWER, "minAnswer not set correctly");
+    assertEq(aggregator.i_maxAnswer(), MAX_ANSWER, "maxAnswer not set correctly");
     assertEq(aggregator.decimals(), 18, "decimals not set correctly");
   }
 }
@@ -142,7 +142,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    vm.expectRevert("too many oracles");
+    vm.expectRevert(PrimaryAggregator.TooManyOracles.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -155,7 +155,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    vm.expectRevert("oracle length mismatch");
+    vm.expectRevert(PrimaryAggregator.OracleLengthMismatch.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -168,7 +168,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    vm.expectRevert("faulty-oracle f too high");
+    vm.expectRevert(PrimaryAggregator.FaultyOracleFTooHigh.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -177,11 +177,11 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     address[] memory signers = new address[](1);
     address[] memory transmitters = new address[](1);
     uint8 f = 0;
-    bytes memory onchainConfig = "1";
+    bytes memory onchainConfig = abi.encodePacked(uint8(1), MIN_ANSWER, MAX_ANSWER);
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    vm.expectRevert("f must be positive");
+    vm.expectRevert(PrimaryAggregator.FMustBePositive.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -194,7 +194,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    vm.expectRevert("invalid onchainConfig");
+    vm.expectRevert(PrimaryAggregator.InvalidOnChainConfig.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -211,7 +211,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
       transmitters[i] = address(uint160(2000 + i));
     }
 
-    vm.expectRevert("repeated signer address");
+    vm.expectRevert(PrimaryAggregator.RepeatedSignerAddress.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -228,7 +228,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
       signers[i] = address(uint160(1000 + i));
     }
 
-    vm.expectRevert("repeated transmitter address");
+    vm.expectRevert(PrimaryAggregator.RepeatedTransmitterAddress.selector);
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
@@ -252,7 +252,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
   }
 }
 
-contract latestConfigDetails is PrimaryAggregatorBaseTest {
+contract LatestConfigDetails is PrimaryAggregatorBaseTest {
   address[] internal signers = new address[](MAX_NUM_ORACLES);
   address[] internal transmitters = new address[](MAX_NUM_ORACLES);
   uint8 internal f = 1;
@@ -380,8 +380,9 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     super.setUp();
   }
 
-  function test_RevertIf_StaleReport() public {
-    vm.expectRevert("stale report");
+  function test_RevertIf_ConfigDigestMismatch() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.ConfigDigestMismatch.selector);
 
     bytes32[3] memory reportContext =
       [bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("2")), bytes32(abi.encodePacked("3"))];
@@ -566,7 +567,7 @@ contract SetBilling is PrimaryAggregatorBaseTest {
       abi.encode(false)
     );
     vm.startPrank(USER);
-    vm.expectRevert("Only owner&billingAdmin can call");
+    vm.expectRevert(PrimaryAggregator.OnlyOwnerAndBillingAdminCanCall.selector);
 
     aggregator.setBilling(0, 0, 0, 0, 0);
   }
@@ -599,7 +600,7 @@ contract GetBilling is PrimaryAggregatorBaseTest {
 
 contract WithdrawPayment is ConfiguredPrimaryAggregatorBaseTest {
   function test_RevertIf_NotPayee() public {
-    vm.expectRevert("Only payee can withdraw");
+    vm.expectRevert(PrimaryAggregator.OnlyPayeeCanWithdraw.selector);
 
     aggregator.withdrawPayment(address(42));
   }
@@ -636,7 +637,7 @@ contract WithdrawFunds is ConfiguredPrimaryAggregatorBaseTest {
       abi.encode(false)
     );
     vm.startPrank(USER);
-    vm.expectRevert("Only owner&billingAdmin can call");
+    vm.expectRevert(PrimaryAggregator.OnlyOwnerAndBillingAdminCanCall.selector);
 
     aggregator.withdrawFunds(USER, 42);
   }
@@ -653,7 +654,7 @@ contract WithdrawFunds is ConfiguredPrimaryAggregatorBaseTest {
       address(s_link), abi.encodeWithSelector(LinkTokenInterface.transfer.selector, USER, 0), abi.encode(false)
     );
 
-    vm.expectRevert("insufficient funds");
+    vm.expectRevert(PrimaryAggregator.InsufficientFunds.selector);
 
     aggregator.withdrawFunds(USER, 1e9);
   }
@@ -723,14 +724,14 @@ contract TransferPayeeship is ConfiguredPrimaryAggregatorBaseTest {
   }
 
   function test_RevertIf_SenderNotCurrentPayee() public {
-    vm.expectRevert("only current payee can update");
+    vm.expectRevert(PrimaryAggregator.OnlyCurrentPayeeCanUpdate.selector);
 
     aggregator.transferPayeeship(address(42), address(43));
   }
 
   function test_RevertIf_SenderIsProposed() public {
     vm.startPrank(payees[0]);
-    vm.expectRevert("cannot transfer to self");
+    vm.expectRevert(PrimaryAggregator.CannotTransferToSelf.selector);
 
     aggregator.transferPayeeship(transmitters[0], payees[0]);
   }
@@ -766,7 +767,7 @@ contract AcceptPayeeship is ConfiguredPrimaryAggregatorBaseTest {
 
   function test_RevertIf_SenderIsNotProposed() public {
     vm.startPrank(address(43));
-    vm.expectRevert("only proposed payees can accept");
+    vm.expectRevert(PrimaryAggregator.OnlyProposedPayeesCanAccept.selector);
 
     aggregator.acceptPayeeship(transmitters[0]);
   }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity 0.8.24;
 
 import {OwnerIsCreator} from "../shared/access/OwnerIsCreator.sol";
 
@@ -100,31 +100,31 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
   /**
    * @param link address of the LINK contract
-   * @param i_minAnswer_ lowest answer the median of a report is allowed to be
-   * @param i_maxAnswer_ highest answer the median of a report is allowed to be
+   * @param minAnswer_ lowest answer the median of a report is allowed to be
+   * @param maxAnswer_ highest answer the median of a report is allowed to be
    * @param requesterAccessController access controller for requesting new rounds
-   * @param i_decimals_ answers are stored in fixed-point format, with this many digits of precision
+   * @param decimals_ answers are stored in fixed-point format, with this many digits of precision
    * @param description_ short human-readable description of observable this contract's answers pertain to
    */
   constructor(
     LinkTokenInterface link,
-    int192 i_minAnswer_,
-    int192 i_maxAnswer_,
+    int192 minAnswer_,
+    int192 maxAnswer_,
     AccessControllerInterface billingAccessController,
     AccessControllerInterface requesterAccessController,
-    uint8 i_decimals_,
+    uint8 decimals_,
     string memory description_
   ) {
     s_linkToken = link;
     emit LinkTokenSet(LinkTokenInterface(address(0)), link);
     _setBillingAccessController(billingAccessController);
 
-    i_decimals = i_decimals_;
+    decimals = decimals_;
     s_description = description_;
     setRequesterAccessController(requesterAccessController);
     setValidatorConfig(AggregatorValidatorInterface(address(0x0)), 0);
-    i_minAnswer = i_minAnswer_;
-    i_maxAnswer = i_maxAnswer_;
+    i_minAnswer = minAnswer_;
+    i_maxAnswer = maxAnswer_;
   }
 
   /**
@@ -146,7 +146,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   function _requirePositiveF(
     uint256 f
   ) internal pure virtual {
-    if (0 > f) {
+    if (f <= 0) {
       revert FMustBePositive();
     }
   }
@@ -182,7 +182,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     if (signers.length != transmitters.length) {
       revert OracleLengthMismatch();
     }
-    if (signers.length > 3 * f) {
+    if (3 * f >= signers.length) {
       revert FaultyOracleFTooHigh();
     }
     _requirePositiveF(f);
@@ -803,12 +803,12 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   /**
    * @return answers are stored in fixed-point format, with this many digits of precision
    */
-  uint8 public immutable override i_decimals;
+  uint8 public immutable override decimals;
 
   /**
    * @notice aggregator contract version
    */
-  uint256 public constant override VERSION = 6;
+  uint256 public constant override version = 6;
 
   string internal s_description;
 
