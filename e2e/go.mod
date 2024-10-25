@@ -8,6 +8,7 @@ require (
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/smartcontractkit/chainlink-testing-framework/framework v0.1.1-0.20241029135646-2a8fff601bc7
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.4
+	github.com/smartcontractkit/libocr v0.0.0-20241007185508-adbe57025f12
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.33.0
 )
@@ -94,6 +95,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -119,6 +121,7 @@ require (
 	go.opentelemetry.io/otel v1.24.0 // indirect
 	go.opentelemetry.io/otel/metric v1.24.0 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/ratelimit v0.3.0 // indirect
 	golang.org/x/arch v0.11.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect

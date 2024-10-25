@@ -6,12 +6,23 @@ tag = "latest"
 [data_provider]
 port = 9111
 
-[don]
+[nodeset]
 nodes = 5
 
-[don.node_spec.node]
+[nodeset.node_spec.node]
 image = "public.ecr.aws/chainlink/chainlink"
 tag = "v2.17.0"
-user_config_overrides = """"""
+user_config_overrides = """
+[Feature]
+LogPoller = true
+
+[OCR2]
+Enabled = true
+DatabaseTimeout = '1s'
+
+[P2P.V2]
+Enabled = true
+ListenAddresses = ['0.0.0.0:6690']
+"""
 # default directory inside container is "/capabilities/$binary_name"
 capabilities = ["./kvstore"]
