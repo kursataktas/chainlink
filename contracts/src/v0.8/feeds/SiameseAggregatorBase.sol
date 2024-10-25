@@ -1,14 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {OwnerIsCreator} from "../shared/access/OwnerIsCreator.sol";
-
-import {AccessControllerInterface} from "../shared/interfaces/AccessControllerInterface.sol";
-import {AggregatorV2V3Interface} from "../shared/interfaces/AggregatorV2V3Interface.sol";
-import {AggregatorValidatorInterface} from "../shared/interfaces/AggregatorValidatorInterface.sol";
-import {LinkTokenInterface} from "../shared/interfaces/LinkTokenInterface.sol";
-import {OCR2Abstract} from "../shared/ocr2/OCR2Abstract.sol";
-
 abstract contract SiameseAggregatorBase {
   struct Report {
     uint32 observationsTimestamp;
@@ -32,7 +24,7 @@ abstract contract SiameseAggregatorBase {
     Report memory report
   ) public virtual;
 
-  function duplicateReport(Report memory report, Transmission memory transmission) internal returns (bool) {
+  function _duplicateReport(Report memory report, Transmission memory transmission) internal returns (bool) {
     // Reports don't have Round IDs so compare based on observation timestamp and answer.
     int192 reportAnswer = report.observations[report.observations.length / 2];
 
