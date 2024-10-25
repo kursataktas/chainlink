@@ -57,7 +57,7 @@ contract MultiAggregateRateLimiter is IMessageInterceptor, AuthorizedCallers, IT
 
   string public constant override typeAndVersion = "MultiAggregateRateLimiter 1.6.0-dev";
 
-  bytes32 internal constant EMPTY_ENCODED_ADDRESS_HASH = keccak256(abi.encode(address(0)));
+  bytes32 private constant EMPTY_ENCODED_ADDRESS_HASH = keccak256(abi.encode(address(0)));
 
   /// @dev Tokens that should be included in Aggregate Rate Limiting (from local chain (this chain) -> remote),
   /// grouped per-remote chain.
