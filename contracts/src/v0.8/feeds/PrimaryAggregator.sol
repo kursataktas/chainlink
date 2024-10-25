@@ -15,6 +15,7 @@ import {SiameseAggregatorBase} from "./SiameseAggregatorBase.sol";
 // it is being used for a new feeds based project that is ongoing
 // there will be some modernization that happens to this contract
 // as the project progresses
+// solhint-disable max-states-count
 contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface {
   // This contract is divided into sections. Each section defines a set of
   // variables, events, and functions that belong together.
@@ -151,12 +152,12 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   }
 
   struct SetConfigArgs {
-    address[] signers;
-    address[] transmitters;
+    uint64 offchainConfigVersion;
     uint8 f;
     bytes onchainConfig;
-    uint64 offchainConfigVersion;
     bytes offchainConfig;
+    address[] signers;
+    address[] transmitters;
   }
 
   error TooManyOracles();
@@ -650,6 +651,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     view
     returns (bytes32 configDigest, uint32 epoch, uint8 round, int192 latestAnswer_, uint64 latestTimestamp_)
   {
+    // solhint-disable-next-line avoid-tx-origin
     if (msg.sender != tx.origin) revert OnlyCallableByEOA();
     return (
       s_latestConfigDigest,
@@ -1130,7 +1132,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       if (!s_linkToken.transfer(payee, juelsAmount)) {
         revert InsufficientFunds();
       }
+      // solhint-disable-next-line reentrancy
       s_rewardFromAggregatorRoundId[transmitter.index] = s_hotVars.latestAggregatorRoundId;
+      // solhint-disable-next-line reentrancy
       s_transmitters[transmitterAddress].paymentJuels = 0;
       emit OraclePaid(transmitterAddress, payee, juelsAmount, s_linkToken);
     }
@@ -1164,6 +1168,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
         }
       }
       // "Zero" the accounting storage variables
+      // solhint-disable-next-line reentrancy
       s_rewardFromAggregatorRoundId = rewardFromAggregatorRoundId;
     }
   }

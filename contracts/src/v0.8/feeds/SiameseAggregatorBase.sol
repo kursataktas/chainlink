@@ -3,10 +3,10 @@ pragma solidity 0.8.28;
 
 abstract contract SiameseAggregatorBase {
   struct Report {
+    int192 juelsPerFeeCoin;
     uint32 observationsTimestamp;
     bytes observers; // ith element is the index of the ith observer
     int192[] observations; // ith element is the ith observation
-    int192 juelsPerFeeCoin;
   }
 
   struct Transmission {
