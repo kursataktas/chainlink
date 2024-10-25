@@ -1224,6 +1224,7 @@ func NewEngine(cfg Config) (engine *Engine, err error) {
 		stopCh:               make(chan struct{}),
 		newWorkerTimeout:     cfg.NewWorkerTimeout,
 		maxExecutionDuration: cfg.MaxExecutionDuration,
+		heartbeatCadence:     cfg.HeartbeatCadence,
 		onExecutionFinished:  cfg.onExecutionFinished,
 		afterInit:            cfg.afterInit,
 		maxRetries:           cfg.maxRetries,
