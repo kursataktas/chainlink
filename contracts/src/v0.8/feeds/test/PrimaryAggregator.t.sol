@@ -5,9 +5,9 @@ import {Test} from "forge-std/Test.sol";
 
 import {PrimaryAggregator} from "../PrimaryAggregator.sol";
 
-import {LinkTokenInterface} from "../../shared/interfaces/LinkTokenInterface.sol";
 import {AccessControllerInterface} from "../../shared/interfaces/AccessControllerInterface.sol";
 import {AggregatorValidatorInterface} from "../../shared/interfaces/AggregatorValidatorInterface.sol";
+import {LinkTokenInterface} from "../../shared/interfaces/LinkTokenInterface.sol";
 import {LinkToken} from "../../shared/token/ERC677/LinkToken.sol";
 
 contract PrimaryAggregatorHarness is PrimaryAggregator {
@@ -19,15 +19,17 @@ contract PrimaryAggregatorHarness is PrimaryAggregator {
     AccessControllerInterface requesterAccessController,
     uint8 decimals_,
     string memory description_
-  ) PrimaryAggregator(
-    link,
-    minAnswer_,
-    maxAnswer_,
-    billingAccessController,
-    requesterAccessController,
-    decimals_,
-    description_
-  ) {}
+  )
+    PrimaryAggregator(
+      link,
+      minAnswer_,
+      maxAnswer_,
+      billingAccessController,
+      requesterAccessController,
+      decimals_,
+      description_
+    )
+  {}
 
   function exposed_configDigestFromConfigData(
     uint256 chainId,
@@ -78,25 +80,14 @@ contract PrimaryAggregatorBaseTest is Test {
 
     linkTokenInterface = LinkTokenInterface(address(s_link));
     AccessControllerInterface _billingAccessController = AccessControllerInterface(BILLING_ACCESS_CONTROLLER_ADDRESS);
-    AccessControllerInterface _requesterAccessController = AccessControllerInterface(REQUESTER_ACCESS_CONTROLLER_ADDRESS);
+    AccessControllerInterface _requesterAccessController =
+      AccessControllerInterface(REQUESTER_ACCESS_CONTROLLER_ADDRESS);
 
     aggregator = new PrimaryAggregator(
-      linkTokenInterface,
-      MIN_ANSWER,
-      MAX_ANSWER,
-      _billingAccessController,
-      _requesterAccessController,
-      18,
-      "TEST"
+      linkTokenInterface, MIN_ANSWER, MAX_ANSWER, _billingAccessController, _requesterAccessController, 18, "TEST"
     );
     harness = new PrimaryAggregatorHarness(
-      linkTokenInterface,
-      MIN_ANSWER,
-      MAX_ANSWER,
-      _billingAccessController,
-      _requesterAccessController,
-      18,
-      "TEST"
+      linkTokenInterface, MIN_ANSWER, MAX_ANSWER, _billingAccessController, _requesterAccessController, 18, "TEST"
     );
   }
 }
@@ -109,22 +100,15 @@ contract ConfiguredPrimaryAggregatorBaseTest is PrimaryAggregatorBaseTest {
   uint64 offchainConfigVersion = 1;
   bytes offchainConfig = "1";
 
-  function setUp() public override virtual {
+  function setUp() public virtual override {
     super.setUp();
 
-    for (uint256 i = 0; i<MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000+i));
-      transmitters[i] = address(uint160(2000+i));
+    for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
+      signers[i] = address(uint160(1000 + i));
+      transmitters[i] = address(uint160(2000 + i));
     }
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 }
 
@@ -160,14 +144,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
 
     vm.expectRevert("too many oracles");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_OracleLengthMismatch() public {
@@ -180,14 +157,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
 
     vm.expectRevert("oracle length mismatch");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_fTooHigh() public {
@@ -200,14 +170,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
 
     vm.expectRevert("faulty-oracle f too high");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_fNotPositive() public {
@@ -220,14 +183,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
 
     vm.expectRevert("f must be positive");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_onchainConfigInvalid() public {
@@ -240,14 +196,7 @@ contract SetConfig is PrimaryAggregatorBaseTest {
 
     vm.expectRevert("invalid onchainConfig");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_RepeatedSigner() public {
@@ -258,20 +207,13 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    for (uint256 i = 0; i<MAX_NUM_ORACLES; i++) {
-      transmitters[i] = address(uint160(2000+i));
+    for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
+      transmitters[i] = address(uint160(2000 + i));
     }
 
     vm.expectRevert("repeated signer address");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_RevertIf_RepeatedTransmitter() public {
@@ -282,20 +224,13 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    for (uint256 i = 0; i<MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000+i));
+    for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
+      signers[i] = address(uint160(1000 + i));
     }
 
     vm.expectRevert("repeated transmitter address");
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_HappyPath() public {
@@ -306,19 +241,12 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     uint64 offchainConfigVersion = 1;
     bytes memory offchainConfig = "1";
 
-    for (uint256 i = 0; i<MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000+i));
-      transmitters[i] = address(uint160(2000+i));
+    for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
+      signers[i] = address(uint160(1000 + i));
+      transmitters[i] = address(uint160(2000 + i));
     }
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
 
     assertEq(true, true, "the setConfig transaction rolled back");
   }
@@ -335,41 +263,34 @@ contract latestConfigDetails is PrimaryAggregatorBaseTest {
   function setUp() public override {
     super.setUp();
 
-    for (uint256 i = 0; i<MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000+i));
-      transmitters[i] = address(uint160(2000+i));
+    for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
+      signers[i] = address(uint160(1000 + i));
+      transmitters[i] = address(uint160(2000 + i));
     }
 
-    aggregator.setConfig(
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    );
+    aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
   }
 
   function test_ReturnsConfigDetails() public view {
-    (
-      uint32 configCount,
-      uint32 blockNumber,
-      bytes32 configDigest
-    ) = aggregator.latestConfigDetails();
+    (uint32 configCount, uint32 blockNumber, bytes32 configDigest) = aggregator.latestConfigDetails();
 
     assertEq(configCount, 1, "config count not incremented");
     assertEq(blockNumber, block.number, "block number is wrong");
-    assertEq(configDigest, harness.exposed_configDigestFromConfigData(
-      block.chainid,
-      address(aggregator),
-      configCount,
-      signers,
-      transmitters,
-      f,
-      onchainConfig,
-      offchainConfigVersion,
-      offchainConfig
-    ), "configDigest is not correct");
+    assertEq(
+      configDigest,
+      harness.exposed_configDigestFromConfigData(
+        block.chainid,
+        address(aggregator),
+        configCount,
+        signers,
+        transmitters,
+        f,
+        onchainConfig,
+        offchainConfigVersion,
+        offchainConfig
+      ),
+      "configDigest is not correct"
+    );
   }
 }
 
@@ -390,17 +311,12 @@ contract SetValidatorConfig is PrimaryAggregatorBaseTest {
   AggregatorValidatorInterface oldValidator = AggregatorValidatorInterface(address(0x0));
   AggregatorValidatorInterface newValidator = AggregatorValidatorInterface(address(42));
 
-
   function test_EmitsValidatorConfigSet() public {
     vm.expectEmit();
     emit ValidatorConfigSet(oldValidator, 0, newValidator, 1);
 
-    aggregator.setValidatorConfig(
-      newValidator,
-      1
-    );
+    aggregator.setValidatorConfig(newValidator, 1);
   }
-
 }
 
 contract GetValidatorConfig is PrimaryAggregatorBaseTest {
@@ -410,10 +326,7 @@ contract GetValidatorConfig is PrimaryAggregatorBaseTest {
   function setUp() public override {
     super.setUp();
 
-    aggregator.setValidatorConfig(
-      newValidator,
-      newGasLimit
-    );
+    aggregator.setValidatorConfig(newValidator, newGasLimit);
   }
 
   function test_ReturnsValidatorConfig() public view {
@@ -426,7 +339,8 @@ contract GetValidatorConfig is PrimaryAggregatorBaseTest {
 contract SetRequesterAccessController is PrimaryAggregatorBaseTest {
   event RequesterAccessControllerSet(AccessControllerInterface old, AccessControllerInterface current);
 
-  AccessControllerInterface oldAccessControllerInterface = AccessControllerInterface(REQUESTER_ACCESS_CONTROLLER_ADDRESS);
+  AccessControllerInterface oldAccessControllerInterface =
+    AccessControllerInterface(REQUESTER_ACCESS_CONTROLLER_ADDRESS);
   AccessControllerInterface newAccessControllerInterface = AccessControllerInterface(address(42));
 
   function test_EmitsRequesterAccessControllerSet() public {
@@ -439,6 +353,7 @@ contract SetRequesterAccessController is PrimaryAggregatorBaseTest {
 
 contract GetRequesterAccessController is PrimaryAggregatorBaseTest {
   AccessControllerInterface newAccessControllerInterface = AccessControllerInterface(address(42));
+
   function setUp() public override {
     super.setUp();
 
@@ -457,26 +372,119 @@ contract GetRequesterAccessController is PrimaryAggregatorBaseTest {
 // TODO: determine if we need this method still
 contract RequestNewRound is ConfiguredPrimaryAggregatorBaseTest {}
 
-// TODO: this is a big one, come back to it
-contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {}
+contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
+  function setUp() public override {
+    super.setUp();
+  }
+
+  function test_RevertIf_StaleReport() public {
+    vm.expectRevert("stale report");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_UnauthorizedTransmitter() public {
+    vm.expectRevert("unauthorized transmitter");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_ConfigDigestMismatch() public {
+    vm.expectRevert("configDigest mismatch");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_WrongNumberOfSignatures() public {
+    vm.expectRevert("wrong number of signatures");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_SignaturesOutOfRegistration() public {
+    vm.expectRevert("signatures out of registration");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_SignatureError() public {
+    vm.expectRevert("signature error");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_DuplicateSigner() public {
+    vm.expectRevert("duplicate signer");
+
+    bytes32[3] reportContext = ["1", "2", "3"];
+    bytes report = "1";
+    bytes32[] rs = ["1"];
+    bytes32[] ss = ["1"];
+    bytes32 rawVs = "1";
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+}
 
 // TODO: once transmit logic is updated we can test these better
 contract LatestTransmissionDetails is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract LatestConfigDigestAndEpoch is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract LatestAnswer is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract LatestTimestamp is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract LatestRound is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract GetAnswer is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract GetTimestamp is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract Description is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract GetRoundData is ConfiguredPrimaryAggregatorBaseTest {}
+
 contract LatestRoundData is ConfiguredPrimaryAggregatorBaseTest {}
 
 contract SetLinkToken is PrimaryAggregatorBaseTest {
-  event LinkTokenSet(
-    LinkTokenInterface indexed oldLinkToken,
-    LinkTokenInterface indexed newLinkToken
-  );
+  event LinkTokenSet(LinkTokenInterface indexed oldLinkToken, LinkTokenInterface indexed newLinkToken);
 
   LinkToken n_linkToken;
   LinkTokenInterface newLinkToken;
@@ -505,9 +513,7 @@ contract SetLinkToken is PrimaryAggregatorBaseTest {
 contract GetLinkToken is PrimaryAggregatorBaseTest {
   function test_ReturnsLinkToken() public view {
     assertEq(
-      address(aggregator.getLinkToken()),
-      address(linkTokenInterface),
-      "did not return the right link token interface"
+      address(aggregator.getLinkToken()), address(linkTokenInterface), "did not return the right link token interface"
     );
   }
 }
@@ -638,11 +644,9 @@ contract WithdrawFunds is ConfiguredPrimaryAggregatorBaseTest {
 
   function test_RevertIf_InsufficientFunds() public {
     vm.mockCall(
-      address(s_link),
-      abi.encodeWithSelector(LinkTokenInterface.transfer.selector, USER, 0),
-      abi.encode(false)
+      address(s_link), abi.encodeWithSelector(LinkTokenInterface.transfer.selector, USER, 0), abi.encode(false)
     );
- 
+
     vm.expectRevert("insufficient funds");
 
     aggregator.withdrawFunds(USER, 1e9);
@@ -659,11 +663,7 @@ contract LinkAvailableForPayment is PrimaryAggregatorBaseTest {
   }
 
   function test_ReturnsBalanceWhenNothingDue() public view {
-    assertEq(
-      aggregator.linkAvailableForPayment(),
-      int256(LINK_AMOUNT),
-      "did not return the correct balance"
-    );
+    assertEq(aggregator.linkAvailableForPayment(), int256(LINK_AMOUNT), "did not return the correct balance");
   }
 
   function test_ReturnsRemainingBalanceWhenHasDues() public view {
@@ -674,24 +674,16 @@ contract LinkAvailableForPayment is PrimaryAggregatorBaseTest {
 
 contract OracleObservationCount is ConfiguredPrimaryAggregatorBaseTest {
   function test_ReturnsZeroWhenNoObservations() public view {
-    assertEq(
-      aggregator.oracleObservationCount(transmitters[0]),
-      0,
-      "did not return 0 for observation count"
-    );
+    assertEq(aggregator.oracleObservationCount(transmitters[0]), 0, "did not return 0 for observation count");
   }
-  
+
   function test_ReturnsCorrectObservationCount() public view {
     // TODO: run a transmit then write this test
   }
 }
 
 contract SetPayees is ConfiguredPrimaryAggregatorBaseTest {
-  event PayeeshipTransferred(
-    address indexed transmitter,
-    address indexed previous,
-    address indexed current
-  );
+  event PayeeshipTransferred(address indexed transmitter, address indexed previous, address indexed current);
 
   address[] payees = transmitters;
 
@@ -709,11 +701,7 @@ contract SetPayees is ConfiguredPrimaryAggregatorBaseTest {
 }
 
 contract TransferPayeeship is ConfiguredPrimaryAggregatorBaseTest {
-  event PayeeshipTransferRequested(
-    address indexed transmitter,
-    address indexed current,
-    address indexed proposed
-  );
+  event PayeeshipTransferRequested(address indexed transmitter, address indexed current, address indexed proposed);
 
   address[] payees = new address[](transmitters.length);
 
@@ -723,7 +711,7 @@ contract TransferPayeeship is ConfiguredPrimaryAggregatorBaseTest {
     super.setUp();
 
     for (uint256 index = 0; index < transmitters.length; index++) {
-      payees[index] = address(uint160(1000+index));
+      payees[index] = address(uint160(1000 + index));
     }
 
     aggregator.setPayees(transmitters, payees);
@@ -752,11 +740,7 @@ contract TransferPayeeship is ConfiguredPrimaryAggregatorBaseTest {
 }
 
 contract AcceptPayeeship is ConfiguredPrimaryAggregatorBaseTest {
-  event PayeeshipTransferred(
-    address indexed transmitter,
-    address indexed previous,
-    address indexed current
-  );
+  event PayeeshipTransferred(address indexed transmitter, address indexed previous, address indexed current);
 
   address[] payees = new address[](transmitters.length);
   address constant PROPOSED = address(42);
@@ -765,7 +749,7 @@ contract AcceptPayeeship is ConfiguredPrimaryAggregatorBaseTest {
     super.setUp();
 
     for (uint256 index = 0; index < transmitters.length; index++) {
-      payees[index] = address(uint160(1000+index));
+      payees[index] = address(uint160(1000 + index));
     }
 
     aggregator.setPayees(transmitters, payees);
@@ -793,11 +777,6 @@ contract AcceptPayeeship is ConfiguredPrimaryAggregatorBaseTest {
 
 contract TypeAndVersion is PrimaryAggregatorBaseTest {
   function test_IsCorrect() public view {
-    assertEq(
-      aggregator.typeAndVersion(),
-      "PrimaryAggregator 1.0.0",
-      "did not return the right type and version"
-    );
+    assertEq(aggregator.typeAndVersion(), "PrimaryAggregator 1.0.0", "did not return the right type and version");
   }
 }
-
