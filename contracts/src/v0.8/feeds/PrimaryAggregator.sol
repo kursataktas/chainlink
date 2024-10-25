@@ -1113,6 +1113,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     address indexed transmitter, address indexed payee, uint256 amount, LinkTokenInterface indexed linkToken
   );
 
+  error InsufficientFunds();
+
   // _payOracle pays out transmitter's balance to the corresponding payee, and zeros it out
   function _payOracle(
     address transmitterAddress
@@ -1124,7 +1126,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       address payee = s_payees[transmitterAddress];
       // Poses no re-entrancy issues, because LINK.transfer does not yield
       // control flow.
-      require(s_linkToken.transfer(payee, juelsAmount), "insufficient funds");
+      if(s_linkToken.transfer(payee, juelsAmount), "insufficient funds"){
+        return InsufficientFunds();
+      }
       s_rewardFromAggregatorRoundId[transmitter.index] = s_hotVars.latestAggregatorRoundId;
       s_transmitters[transmitterAddress].paymentJuels = 0;
       emit OraclePaid(transmitterAddress, payee, juelsAmount, s_linkToken);
