@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Taken from https://blog.howardjohn.info/posts/go-build-times/#linking-vs-compiling
+# Usage: go test -exec=true -toolexec=$PWD/tools/bin/go-compile-without-linker -vet=off ./...
+# 
+
+if [[ "${2}" == "-V=full" ]]; then
+  "$@"
+  exit 0
+fi
+case "$(basename ${1})" in
+  link)
+    # Output a dummy file
+    touch "${3}"
+    ;;
+  *)
+    "$@"
+esac
