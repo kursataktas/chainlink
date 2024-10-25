@@ -406,7 +406,7 @@ jobs:
 
           if [[ "$ETH_IMPLEMENTATIONS" == *"erigon"* ]]; then
             # 2.60.0 and 2.60.1 are ignored as they stopped working with CL node
-            erigon_images=$(ecrimagefetcher 'thorax/erigon' '^v[0-9]+\.[0-9]+\.[0-9]+$' ${{ env.LATEST_IMAGE_COUNT }} "<v2.60.0")
+            erigon_images=$(ecrimagefetcher 'thorax/erigon' '^v[0-9]+\.[0-9]+\.[0-9]+$' ${{ env.LATEST_IMAGE_COUNT }} "<v2.60.0 || >v2.60.2")
             echo "ERIGON_IMAGES=$erigon_images" >> $GITHUB_ENV
             echo "Erigon latest images: $erigon_images" 
           fi
