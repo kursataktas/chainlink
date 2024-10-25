@@ -111,6 +111,7 @@ type Engine struct {
 	stopCh               services.StopChan
 	newWorkerTimeout     time.Duration
 	maxExecutionDuration time.Duration
+	heartbeatCadence     time.Duration
 
 	// testing lifecycle hook to signal when an execution is finished.
 	onExecutionFinished func(string)
@@ -146,6 +147,9 @@ func (e *Engine) Start(_ context.Context) error {
 
 		e.wg.Add(1)
 		go e.init(ctx)
+
+		e.wg.Add(1)
+		go e.heartbeat(ctx)
 
 		return nil
 	})
@@ -1026,6 +1030,23 @@ func (e *Engine) isWorkflowFullyProcessed(ctx context.Context, state store.Workf
 	return workflowProcessed, store.StatusCompleted, nil
 }
 
+func (e *Engine) heartbeat(ctx context.Context) {
+	defer e.wg.Done()
+
+	ticker := time.NewTicker(e.heartbeatCadence)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			e.logger.Info("shutting down heartbeat")
+			return
+		case <-ticker.C:
+			logCustMsg(e.cma, fmt.Sprintf("engine heartbeat at %s", e.clock.Now().Format(time.RFC3339)), e.logger)
+		}
+	}
+}
+
 func (e *Engine) Close() error {
 	return e.StopOnce("Engine", func() error {
 		e.logger.Info("shutting down engine")
@@ -1105,6 +1126,7 @@ type Config struct {
 	Config               []byte
 	Binary               []byte
 	SecretsFetcher       secretsFetcher
+	HeartbeatCadence     time.Duration
 
 	// For testing purposes only
 	maxRetries          int
@@ -1119,6 +1141,7 @@ const (
 	defaultQueueSize            = 100000
 	defaultNewWorkerTimeout     = 2 * time.Second
 	defaultMaxExecutionDuration = 10 * time.Minute
+	defaultHeartbeatCadence     = 5 * time.Minute
 )
 
 func NewEngine(cfg Config) (engine *Engine, err error) {
@@ -1144,6 +1167,10 @@ func NewEngine(cfg Config) (engine *Engine, err error) {
 
 	if cfg.MaxExecutionDuration == 0 {
 		cfg.MaxExecutionDuration = defaultMaxExecutionDuration
+	}
+
+	if cfg.HeartbeatCadence == 0 {
+		cfg.HeartbeatCadence = defaultHeartbeatCadence
 	}
 
 	if cfg.retryMs == 0 {
