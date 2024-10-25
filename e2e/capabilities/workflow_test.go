@@ -5,11 +5,13 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/libocr/offchainreporting2/confighelper"
@@ -32,25 +34,32 @@ type WorkflowTestConfig struct {
 }
 
 type OCR3Config struct {
-	Signers               []types.OnchainPublicKey
-	Transmitters          []types.Account
+	Signers               []common.Address
+	Transmitters          []common.Address
 	F                     uint8
 	OnchainConfig         []byte
 	OffchainConfigVersion uint64
 	OffchainConfig        []byte
 }
 
+func extractKey(value string) string {
+	parts := strings.Split(value, "_")
+	if len(parts) > 1 {
+		return parts[len(parts)-1]
+	}
+	return value
+}
+
 func generateOCR3Config(t *testing.T, nodes []*clclient.ChainlinkClient) (*OCR3Config, error) {
-	// type OracleIdentity struct {
-	// 	OnChainSigningAddress types.OnChainSigningAddress
-	// 	TransmitAddress       common.Address
-	// 	OffchainPublicKey     types.OffchainPublicKey
-	// 	PeerID                string
-	// }
 	oracleIdentities := []confighelper.OracleIdentityExtra{}
 	transmissionSchedule := []int{}
 
-	for _, node := range nodes {
+	for i, node := range nodes {
+		// TODO: Do not provide a bootstrap node to this func
+		// We want to skip bootstrap node.
+		if i == 0 {
+			continue
+		}
 		transmissionSchedule = append(transmissionSchedule, 0)
 		oracleIdentity := confighelper.OracleIdentityExtra{}
 		// ocr2
@@ -59,17 +68,17 @@ func generateOCR3Config(t *testing.T, nodes []*clclient.ChainlinkClient) (*OCR3C
 
 		firstOCR2Key := ocr2Keys.Data[0].Attributes
 
-		offchainPublicKeyBytes, err := hex.DecodeString(firstOCR2Key.OffChainPublicKey)
+		offchainPublicKeyBytes, err := hex.DecodeString(extractKey(firstOCR2Key.OffChainPublicKey))
 		require.NoError(t, err)
 		var offchainPublicKey [32]byte
 		copy(offchainPublicKey[:], offchainPublicKeyBytes)
 		oracleIdentity.OffchainPublicKey = offchainPublicKey
 
-		onchainPubkey, err := hex.DecodeString(firstOCR2Key.OnChainPublicKey)
+		onchainPubkey, err := hex.DecodeString(extractKey(firstOCR2Key.OnChainPublicKey))
 		require.NoError(t, err)
 		oracleIdentity.OnchainPublicKey = onchainPubkey
 
-		sharedSecretEncryptionPublicKeyBytes, err := hex.DecodeString(firstOCR2Key.ConfigPublicKey)
+		sharedSecretEncryptionPublicKeyBytes, err := hex.DecodeString(extractKey(firstOCR2Key.ConfigPublicKey))
 		require.NoError(t, err)
 		var sharedSecretEncryptionPublicKey [32]byte
 		copy(sharedSecretEncryptionPublicKey[:], sharedSecretEncryptionPublicKeyBytes)
@@ -119,9 +128,19 @@ func generateOCR3Config(t *testing.T, nodes []*clclient.ChainlinkClient) (*OCR3C
 	// maxDurationShouldAcceptAttestedReport time.Duration,
 	// maxDurationShouldTransmitAcceptedReport time.Duration,
 
+	signerAddresses := []common.Address{}
+	for _, signer := range signers {
+		signerAddresses = append(signerAddresses, common.Address(signer))
+	}
+
+	transmitterAddresses := []common.Address{}
+	for _, transmitter := range transmitters {
+		transmitterAddresses = append(transmitterAddresses, common.HexToAddress(string(transmitter)))
+	}
+
 	return &OCR3Config{
-		Signers:               signers,
-		Transmitters:          transmitters,
+		Signers:               signerAddresses,
+		Transmitters:          transmitterAddresses,
 		F:                     f,
 		OnchainConfig:         onchainConfig,
 		OffchainConfigVersion: offchainConfigVersion,
@@ -138,7 +157,7 @@ func TestWorkflow(t *testing.T) {
 		bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
 		require.NoError(t, err)
 
-		nodeset, err := ns.NewNodeSet(in.NodeSet, bc, "https://example.com") // TODO: Should not be a thing
+		nodeset, err := ns.NewSharedDBNodeSet(in.NodeSet, bc, "https://example.com") // TODO: Should not be a thing
 		require.NoError(t, err)
 
 		for i, n := range nodeset.CLNodes {
@@ -158,7 +177,7 @@ func TestWorkflow(t *testing.T) {
 
 		fmt.Println("Setting up KV store capabilities...")
 
-		simpleOCRAddress, tx, _ /* KVStoreOCRContract */, err := simple_ocr.DeploySimpleOCR(
+		simpleOCRAddress, tx, KVStoreOCRContract, err := simple_ocr.DeploySimpleOCR(
 			sc.NewTXOpts(),
 			sc.Client,
 		)
@@ -219,7 +238,7 @@ func TestWorkflow(t *testing.T) {
 					chain_id="%s"
 					ocr_contract_address="%s"`,
 					"kvstore",
-					"./capabilities/kvstore",
+					"/home/capabilities/kvstore",
 					p2pKeys.Data[0].Attributes.PeerID,
 					nodeset.CLNodes[0].Node.HostP2PURL,
 					"evm",
@@ -231,73 +250,32 @@ func TestWorkflow(t *testing.T) {
 				fmt.Printf("Response from node %d: %x\n", i+1, response)
 			}()
 		}
+		wg.Wait()
 
 		ocr3Config, err := generateOCR3Config(t, nodeClients)
 		require.NoError(t, err)
-
 		fmt.Println("ocr3Config", ocr3Config)
 
-		wg.Wait()
-
 		// Configure KV store OCR contract
-		// KVStoreOCRContract.SetConfig(
-		// 	sc,
-		// 	// _signers []common.Address,
-		// 	// _transmitters []common.Address,
-		// 	// _f uint8,
-		// 	// _onchainConfig []byte,
-		// 	// _offchainConfigVersion uint64,
-		// 	// _offchainConfig []byte
-		// )
+		KVStoreOCRContract.SetConfig(
+			sc.NewTXOpts(),
+			ocr3Config.Signers,
+			ocr3Config.Transmitters,
+			ocr3Config.F,
+			ocr3Config.OnchainConfig,
+			ocr3Config.OffchainConfigVersion,
+			ocr3Config.OffchainConfig,
+		)
 
 		// Add bootstrap spec
 		// ✅ 2. Deploy KV store OCR contract
 		// ✅ 4. Add boostrap job spec
 		// ✅ 4. Add KV store capabilities (hardocded binaries for now)
-		// 1. Fetch node keys
-		// 3. Configure OCR contract
+		// ✅ 1. Fetch node keys
+		// ✅ 3. Configure OCR contract
 		// 4.1. Add CRON capabilities
 		// 4.2. EVM target capabilities
 		// 5. TODOs: Have a workflow running and tested
 
-		// interact with contracts
-		// i, err := burn_mint_erc677.NewBurnMintERC677(contracts.Addresses[0], sc.Client)
-		// require.NoError(t, err)
-		// balance, err := i.BalanceOf(sc.NewCallOpts(), contracts.Addresses[0])
-		// require.NoError(t, err)
-		// fmt.Println(balance)
-
-		// // create jobs using deployed contracts data, this is just an example
-		// r, _, err := c[0].CreateJobRaw(`
-		// type            = "cron"
-		// schemaVersion   = 1
-		// schedule        = "CRON_TZ=UTC */10 * * * * *" # every 10 secs
-		// observationSource   = """
-		//    // data source 2
-		//    fetch         [type=http method=GET url="https://min-api.cryptocompare.com/data/pricemultifull?fsyms=ETH&tsyms=USD"];
-		//    parse       [type=jsonparse path="RAW,ETH,USD,PRICE"];
-		//    multiply    [type="multiply" input="$(parse)" times=100]
-		//    encode_tx   [type="ethabiencode"
-		//                 abi="submit(uint256 value)"
-		//                 data="{ \\"value\\": $(multiply) }"]
-		//    submit_tx   [type="ethtx" to="0x859AAa51961284C94d970B47E82b8771942F1980" data="$(encode_tx)"]
-
-		//    fetch -> parse -> multiply -> encode_tx -> submit_tx
-		// """`)
-		// require.NoError(t, err)
-		// require.Equal(t, len(r.Errors), 0)
-		// fmt.Printf("error: %v", err)
-		// fmt.Println(r)
 	})
-
-	//t.Run("can access mockserver", func(t *testing.T) {
-	//	// on the host, locally
-	//	client := resty.New()
-	//	_, err := client.R().
-	//		Get(fmt.Sprintf("%s/mock1", dp.BaseURLHost))
-	//	require.NoError(t, err)
-	//	// other components can access inside docker like this
-	//	err = components.NewDockerFakeTester(fmt.Sprintf("%s/mock1", dp.BaseURLDocker))
-	//	require.NoError(t, err)
-	//})
 }
