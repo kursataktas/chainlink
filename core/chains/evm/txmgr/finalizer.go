@@ -239,7 +239,9 @@ func (f *evmFinalizer) processFinalizedHead(ctx context.Context, latestFinalized
 	if err != nil {
 		return fmt.Errorf("failed to retrieve receipts for confirmed, unfinalized transactions: %w", err)
 	}
-	f.lggr.Debugw(fmt.Sprintf("found %d receipts for potential finalized transactions", len(unfinalizedReceipts)), "timeElapsed", time.Since(mark))
+	if len(unfinalizedReceipts) > 0 {
+		f.lggr.Debugw(fmt.Sprintf("found %d receipts for potential finalized transactions", len(unfinalizedReceipts)), "timeElapsed", time.Since(mark))
+	}
 	mark = time.Now()
 
 	finalizedReceipts := make([]*evmtypes.Receipt, 0, len(unfinalizedReceipts))
@@ -271,15 +273,18 @@ func (f *evmFinalizer) processFinalizedHead(ctx context.Context, latestFinalized
 		}
 		finalizedReceipts = append(finalizedReceipts, receipt)
 	}
-	f.lggr.Debugw(fmt.Sprintf("found %d finalized transactions using local block history", len(finalizedReceipts)), "latestFinalizedBlockNum", latestFinalizedHead.BlockNumber(), "timeElapsed", time.Since(mark))
+	if len(finalizedReceipts) > 0 {
+		f.lggr.Debugw(fmt.Sprintf("found %d finalized transactions using local block history", len(finalizedReceipts)), "latestFinalizedBlockNum", latestFinalizedHead.BlockNumber(), "timeElapsed", time.Since(mark))
+	}
 	mark = time.Now()
 
 	// Check if block hashes exist for receipts on-chain older than the earliest cached head
 	// Transactions are grouped by their receipt block hash to avoid repeat requests on the same hash in case transactions were confirmed in the same block
 	validatedReceipts := f.batchCheckReceiptHashesOnchain(ctx, blockNumToReceiptsMap)
 	finalizedReceipts = append(finalizedReceipts, validatedReceipts...)
-	f.lggr.Debugw(fmt.Sprintf("found %d finalized transactions validated against RPC", len(validatedReceipts)), "latestFinalizedBlockNum", latestFinalizedHead.BlockNumber(), "timeElapsed", time.Since(mark))
-
+	if len(validatedReceipts) > 0 {
+		f.lggr.Debugw(fmt.Sprintf("found %d finalized transactions validated against RPC", len(validatedReceipts)), "latestFinalizedBlockNum", latestFinalizedHead.BlockNumber(), "timeElapsed", time.Since(mark))
+	}
 	txHashes := f.buildTxHashList(finalizedReceipts)
 
 	err = f.txStore.UpdateTxStatesToFinalizedUsingTxHashes(ctx, txHashes, f.chainID)

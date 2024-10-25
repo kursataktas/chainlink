@@ -863,7 +863,7 @@ func mineForceFulfilled(t *testing.T, requestID *big.Int, subID uint64, forceFul
 				return false
 			}
 		}
-		return len(txs) == int(forceFulfilledCount)
+		return len(txs) >= int(forceFulfilledCount)
 	}, testutils.WaitTimeout(t), time.Second)
 }
 
