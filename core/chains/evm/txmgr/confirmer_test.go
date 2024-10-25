@@ -122,7 +122,7 @@ func TestEthConfirmer_Lifecycle(t *testing.T) {
 	ethClient := testutils.NewEthClientMockWithDefaultChain(t)
 	ethKeyStore := cltest.NewKeyStore(t, db).Eth()
 
-	// Add some fromAddresses
+	// Add some fromAddressess
 	cltest.MustInsertRandomKey(t, ethKeyStore)
 	cltest.MustInsertRandomKey(t, ethKeyStore)
 	estimator := gasmocks.NewEvmEstimator(t)
