@@ -3,6 +3,10 @@ name: Find New Flaky Tests
 on:
   workflow_call:
     inputs:
+      repoUrl:
+        required: true
+        type: string
+        description: 'The URL of the repository to compare changes for detecting flaky tests.'
       baseRef:
         required: true
         type: string
@@ -95,7 +99,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $PACKAGES
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
@@ -109,7 +113,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $TEST_FILES
           echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
           
@@ -309,7 +313,7 @@ jobs:
         run: |
           echo "## Flaky Test Detection Summary" >> $GITHUB_STEP_SUMMARY
           echo "### Comparative Test Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`." >> $GITHUB_STEP_SUMMARY
+          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`. See all changes [here](${{ inputs.repoUrl }}/compare/${{ inputs.baseRef }}...${{ inputs.headRef }})." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Changed Test Files to GitHub Summary
         if: ${{ needs.find-tests.outputs.changed_test_files != '' && inputs.findByTestFilesDiff && !inputs.findByAffectedPackages }}
