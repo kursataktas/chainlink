@@ -2,11 +2,6 @@ module github.com/smartcontractkit/chainlink/core/scripts
 
 go 1.22.8
 
-// Make sure we're working with the latest chainlink libs
-replace github.com/smartcontractkit/chainlink/v2 => ../../
-
-replace github.com/smartcontractkit/chainlink/integration-tests => ../../integration-tests
-
 require (
 	github.com/docker/docker v27.3.1+incompatible
 	github.com/docker/go-connections v0.5.0
@@ -26,7 +21,7 @@ require (
 	github.com/smartcontractkit/chainlink-automation v1.0.0-alpha.0.0.20241023165837-8c05ee9b97d5
 	github.com/smartcontractkit/chainlink-common v0.3.1-0.20241025132045-cfad02139595
 	github.com/smartcontractkit/chainlink/integration-tests v0.0.0-20241025160002-ac6c9496fc63
-	github.com/smartcontractkit/chainlink/v2 v2.0.0-00010101000000-000000000000
+	github.com/smartcontractkit/chainlink/v2 v2.14.0-mercury-20240807.0.20241025160002-ac6c9496fc63
 	github.com/smartcontractkit/libocr v0.0.0-20241007185508-adbe57025f12
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
