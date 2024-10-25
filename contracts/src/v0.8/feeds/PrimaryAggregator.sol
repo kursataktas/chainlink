@@ -145,8 +145,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   function _requirePositiveF(
     uint256 f
   ) internal pure virtual {
-    if (0 < f) {
-      return FMustBePositive();
+    if (0 > f) {
+      revert FMustBePositive();
     }
   }
 
@@ -175,18 +175,18 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     uint64 offchainConfigVersion,
     bytes memory offchainConfig
   ) external override onlyOwner {
-    if (signers.length <= MAX_NUM_ORACLES) {
-      return TooManyOracles();
+    if (signers.length > MAX_NUM_ORACLES) {
+      revert TooManyOracles();
     }
-    if (signers.length == transmitters.length) {
-      return OracleLengthMismatch();
+    if (signers.length != transmitters.length) {
+      revert OracleLengthMismatch();
     }
-    if (3 * f < signers.length) {
-      return FaultyOracleFTooHigh();
+    if (signers.length > 3 * f) {
+      revert FaultyOracleFTooHigh();
     }
     _requirePositiveF(f);
-    if (keccak256(onchainConfig) == keccak256(abi.encodePacked(uint8(1), /*version*/ i_minAnswer, i_maxAnswer))) {
-      return InvalidOnChainConfig();
+    if (keccak256(onchainConfig) != keccak256(abi.encodePacked(uint8(1), /*version*/ i_minAnswer, i_maxAnswer))) {
+      revert InvalidOnChainConfig();
     }
 
     SetConfigArgs memory args = SetConfigArgs({
@@ -214,12 +214,12 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
     // add new signer/transmitter addresses
     for (uint256 i = 0; i < args.signers.length; i++) {
-      if (!s_signers[args.signers[i]].active) {
-        return RepeatedSignerAddress();
+      if (s_signers[args.signers[i]].active) {
+        revert RepeatedSignerAddress();
       }
       s_signers[args.signers[i]] = Signer({active: true, index: uint8(i)});
-      if (!s_transmitters[args.transmitters[i]].active) {
-        return RepeatedTransmitterAddress();
+      if (s_transmitters[args.transmitters[i]].active) {
+        revert RepeatedTransmitterAddress();
       }
       s_transmitters[args.transmitters[i]] = Transmitter({active: true, index: uint8(i), paymentJuels: 0});
     }
@@ -345,7 +345,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     uint32 prevAggregatorRoundId = aggregatorRoundId - 1;
     int256 prevAggregatorRoundAnswer = s_transmissions[prevAggregatorRoundId].answer;
     if (
-      _callWithExactGasEvenIfTargetIsNoContract(
+      !_callWithExactGasEvenIfTargetIsNoContract(
         vc.gasLimit,
         address(vc.validator),
         abi.encodeWithSignature(
@@ -357,7 +357,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
         )
       )
     ) {
-      return InsufficientGas();
+      revert InsufficientGas();
     }
   }
 
@@ -448,8 +448,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    */
 
   function requestNewRound() external returns (uint80) {
-    if (msg.sender == owner() || s_requesterAccessController.hasAccess(msg.sender, msg.data)) {
-      return OnlyOwnerAndRequesterCanCall();
+    if (!(msg.sender == owner() || s_requesterAccessController.hasAccess(msg.sender, msg.data))) {
+      revert OnlyOwnerAndRequesterCanCall();
     }
 
     uint40 latestEpochAndRound = s_hotVars.latestEpochAndRound;
@@ -547,8 +547,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       + rs.length * 32 // 32 bytes per entry in rs
       + ss.length * 32 // 32 bytes per entry in ss
       + 0; // placeholder
-    if (msg.data.length == expected) {
-      return CalldataLengthMismatch();
+    if (msg.data.length != expected) {
+      revert CalldataLengthMismatch();
     }
   }
 
@@ -584,25 +584,25 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
     uint40 epochAndRound = uint40(uint256(reportContext[1]));
 
-    if (hotVars.latestEpochAndRound < epochAndRound) {
-      return StaleReport();
+    if (epochAndRound > hotVars.latestEpochAndRound) {
+      revert StaleReport();
     }
 
-    if (s_transmitters[msg.sender].active) {
-      return UnauthorizedTransmitter();
+    if (!s_transmitters[msg.sender].active) {
+      revert UnauthorizedTransmitter();
     }
 
-    if (s_latestConfigDigest == reportContext[0]) {
-      return ConfigDigestMismatch();
+    if (s_latestConfigDigest != reportContext[0]) {
+      revert ConfigDigestMismatch();
     }
 
     _requireExpectedMsgDataLength(report, rs, ss);
 
-    if (rs.length == hotVars.f + 1) {
-      return WrongNumberOfSignatures();
+    if (rs.length != hotVars.f + 1) {
+      revert WrongNumberOfSignatures();
     }
-    if (rs.length == ss.length) {
-      return SignaturesOutOfRegistration();
+    if (rs.length != ss.length) {
+      revert SignaturesOutOfRegistration();
     }
 
     // Verify signatures attached to report
@@ -616,8 +616,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       for (uint256 i = 0; i < rs.length; i++) {
         address signerAddress = ecrecover(h, uint8(rawVs[i]) + 27, rs[i], ss[i]);
         signer = s_signers[signerAddress];
-        if (signer.active) {
-          return SignatureError();
+        if (!signer.active) {
+          revert SignatureError();
         }
         unchecked {
           signedCount += 1 << (8 * signer.index);
@@ -625,8 +625,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       }
 
       // The first byte of the mask can be 0, because we only ever have 31 oracles
-      if (signedCount & 0x0001010101010101010101010101010101010101010101010101010101010101 == signedCount) {
-        return DuplicatedSigner();
+      if (signedCount & 0x0001010101010101010101010101010101010101010101010101010101010101 != signedCount) {
+        revert DuplicatedSigner();
       }
     }
 
@@ -650,7 +650,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     view
     returns (bytes32 configDigest, uint32 epoch, uint8 round, int192 latestAnswer_, uint64 latestTimestamp_)
   {
-    if (msg.sender == tx.origin) return OnlyCallableByEOA();
+    if (msg.sender != tx.origin) revert OnlyCallableByEOA();
     return (
       s_latestConfigDigest,
       uint32(s_hotVars.latestEpochAndRound >> 8),
@@ -659,8 +659,6 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       s_transmissions[s_hotVars.latestAggregatorRoundId].recordedTimestamp
     );
   }
-
-  error ReportLengthMismatch();
 
   /// @inheritdoc OCR2Abstract
   function latestConfigDigestAndEpoch()
@@ -673,6 +671,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     return (false, s_latestConfigDigest, uint32(s_hotVars.latestEpochAndRound >> 8));
   }
 
+  error ReportLengthMismatch();
+
   function _requireExpectedReportLength(bytes memory report, int192[] memory observations) private pure {
     uint256 expected = 32 // observationsTimestamp
       + 32 // rawObservers
@@ -681,7 +681,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       + 32 // observations length
       + 32 * observations.length // observations payload
       + 0;
-    if (report.length == expected) return ReportLengthMismatch();
+    if (report.length != expected) revert ReportLengthMismatch();
   }
 
   error NumObservationsOutOfBounds();
@@ -696,17 +696,17 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   ) internal returns (int192 juelsPerFeeCoin) {
     Report memory report = _decodeReport(rawReport);
 
-    if (report.observations.length <= MAX_NUM_ORACLES) return NumObservationsOutOfBounds();
+    if (report.observations.length > MAX_NUM_ORACLES) revert NumObservationsOutOfBounds();
     // Offchain logic ensures that a quorum of oracles is operating on a matching set of at least
     // 2f+1 observations. By assumption, up to f of those can be faulty, which includes being
     // malformed. Conversely, more than f observations have to be well-formed and sent on chain.
-    if (hotVars.f < report.observations.length) return TooFewValuesToTrustMedian();
+    if (report.observations.length > hotVars.f) revert TooFewValuesToTrustMedian();
 
     hotVars.latestEpochAndRound = epochAndRound;
 
     // get median, validate its range, store it in new aggregator round
     int192 median = report.observations[report.observations.length / 2];
-    if (i_minAnswer <= median && median <= i_maxAnswer) return MedianIsOutOfMinMaxRange();
+    if (i_minAnswer > median && median > i_maxAnswer) revert MedianIsOutOfMinMaxRange();
     hotVars.latestAggregatorRoundId++;
     s_transmissions[hotVars.latestAggregatorRoundId] = Transmission({
       answer: median,
@@ -915,7 +915,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // token contract (by assumption).
     _payOracles();
     uint256 remainingBalance = oldLinkToken.balanceOf(address(this));
-    if (oldLinkToken.transfer(recipient)) return TransferRemainingFundsFailed();
+    if (!oldLinkToken.transfer(recipient, remainingBalance)) revert TransferRemainingFundsFailed();
+    // solhint-disable-next-line reentrancy
     s_linkToken = linkToken;
     emit LinkTokenSet(oldLinkToken, linkToken);
   }
@@ -1019,8 +1020,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     uint24 accountingGas
   ) external {
     AccessControllerInterface access = s_billingAccessController;
-    if (msg.sender == owner() || access.hasAccess(msg.sender, msg.data)) {
-      return OnlyOwnerAndBillingAdminCanCall();
+    if (!(msg.sender == owner() || access.hasAccess(msg.sender, msg.data))) {
+      revert OnlyOwnerAndBillingAdminCanCall();
     }
     _payOracles();
 
@@ -1078,7 +1079,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   function withdrawPayment(
     address transmitter
   ) external {
-    if (msg.sender == s_payees[transmitter]) return OnlyPayeeCanWithdraw();
+    if (!(msg.sender == s_payees[transmitter])) revert OnlyPayeeCanWithdraw();
     _payOracle(transmitter);
   }
 
@@ -1126,8 +1127,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       address payee = s_payees[transmitterAddress];
       // Poses no re-entrancy issues, because LINK.transfer does not yield
       // control flow.
-      if(s_linkToken.transfer(payee, juelsAmount)){
-        return InsufficientFunds();
+      if (!s_linkToken.transfer(payee, juelsAmount)) {
+        revert InsufficientFunds();
       }
       s_rewardFromAggregatorRoundId[transmitter.index] = s_hotVars.latestAggregatorRoundId;
       s_transmitters[transmitterAddress].paymentJuels = 0;
@@ -1155,7 +1156,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
           address payee = s_payees[transmitters[transmitteridx]];
           // Poses no re-entrancy issues, because LINK.transfer does not yield
           // control flow.
-          require(linkToken.transfer(payee, juelsAmount), "insufficient funds");
+          if (!linkToken.transfer(payee, juelsAmount)) {
+            revert InsufficientFunds();
+          }
           rewardFromAggregatorRoundId[transmitteridx] = latestAggregatorRoundId;
           emit OraclePaid(transmitters[transmitteridx], payee, juelsAmount, linkToken);
         }
@@ -1165,6 +1168,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     }
   }
 
+  error InsufficientBalance();
+
   /**
    * @notice withdraw any available funds left in the contract, up to amount, after accounting for the funds due to participants in past reports
    * @param recipient address to send funds to
@@ -1172,14 +1177,17 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @dev access control provided by billingAccessController
    */
   function withdrawFunds(address recipient, uint256 amount) external {
-    require(
-      msg.sender == owner() || s_billingAccessController.hasAccess(msg.sender, msg.data),
-      "Only owner&billingAdmin can call"
-    );
+    if (!(msg.sender == owner() || s_billingAccessController.hasAccess(msg.sender, msg.data))) {
+      revert OnlyOwnerAndBillingAdminCanCall();
+    }
     uint256 linkDue = _totalLinkDue();
     uint256 linkBalance = s_linkToken.balanceOf(address(this));
-    require(linkBalance >= linkDue, "insufficient balance");
-    require(s_linkToken.transfer(recipient, _min(linkBalance - linkDue, amount)), "insufficient funds");
+    if (linkBalance < linkDue) {
+      revert InsufficientBalance();
+    }
+    if (!s_linkToken.transfer(recipient, _min(linkBalance - linkDue, amount))) {
+      revert InsufficientFunds();
+    }
   }
 
   // Total LINK due to participants in past reports (denominated in Juels).
@@ -1263,6 +1271,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     }
   }
 
+  error LeftGasCannotExceedInitialGas();
+
   // gas reimbursement due the transmitter, in wei
   function _transmitterGasCostWei(
     uint256 initialGas,
@@ -1274,7 +1284,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // this happens on the path for transmissions. we'd rather pay out
     // a wrong reward than risk a liveness failure due to a revert.
     unchecked {
-      require(initialGas >= leftGas, "leftGas cannot exceed initialGas");
+      if (initialGas < leftGas) revert LeftGasCannotExceedInitialGas();
       uint256 usedGas = initialGas - leftGas // observed gas usage
         + callDataGas + accountingGas; // estimated gas usage
       uint256 fullGasCostWei = usedGas * gasPriceGwei * (1 gwei);
@@ -1357,6 +1367,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    */
   event PayeeshipTransferred(address indexed transmitter, address indexed previous, address indexed current);
 
+  error TransmittersSizeNotEqualPayeeSize();
+  error PayeeAlreadySent();
+
   /**
    * @notice sets the payees for transmitting addresses
    * @param transmitters addresses oracles use to transmit the reports
@@ -1365,14 +1378,14 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @dev cannot be used to change payee addresses, only to initially populate them
    */
   function setPayees(address[] calldata transmitters, address[] calldata payees) external onlyOwner {
-    require(transmitters.length == payees.length, "transmitters.size != payees.size");
+    if (transmitters.length != payees.length) revert TransmittersSizeNotEqualPayeeSize();
 
     for (uint256 i = 0; i < transmitters.length; i++) {
       address transmitter = transmitters[i];
       address payee = payees[i];
       address currentPayee = s_payees[transmitter];
       bool zeroedOut = currentPayee == address(0);
-      require(zeroedOut || currentPayee == payee, "payee already set");
+      if (!(zeroedOut || currentPayee == payee)) revert PayeeAlreadySent();
       s_payees[transmitter] = payee;
 
       if (currentPayee != payee) {
@@ -1381,6 +1394,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     }
   }
 
+  error OnlyCurrentPayeeCanUpdate();
+  error CannotTransferToSelf();
+
   /**
    * @notice first step of payeeship transfer (safe transfer pattern)
    * @param transmitter transmitter address of oracle whose payee is changing
@@ -1388,8 +1404,10 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @dev can only be called by payee address
    */
   function transferPayeeship(address transmitter, address proposed) external {
-    require(msg.sender == s_payees[transmitter], "only current payee can update");
-    require(msg.sender != proposed, "cannot transfer to self");
+    if (msg.sender != s_payees[transmitter]) {
+      revert OnlyCurrentPayeeCanUpdate();
+    }
+    if (msg.sender == proposed) revert CannotTransferToSelf();
 
     address previousProposed = s_proposedPayees[transmitter];
     s_proposedPayees[transmitter] = proposed;
@@ -1399,6 +1417,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     }
   }
 
+  error OnlyProposedPayeesCanAccept();
+
   /**
    * @notice second step of payeeship transfer (safe transfer pattern)
    * @param transmitter transmitter address of oracle whose payee is changing
@@ -1407,7 +1427,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   function acceptPayeeship(
     address transmitter
   ) external {
-    require(msg.sender == s_proposedPayees[transmitter], "only proposed payees can accept");
+    if (msg.sender != s_proposedPayees[transmitter]) revert OnlyProposedPayeesCanAccept();
 
     address currentPayee = s_payees[transmitter];
     s_payees[transmitter] = msg.sender;
