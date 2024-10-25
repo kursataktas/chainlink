@@ -210,12 +210,6 @@ jobs:
         if: ${{ needs.filter.outputs.changes == 'true' }}
         run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/gotestloghelper@v1.50.0
 
-      - name: Build binaries without linker (build cache optimization)
-        if: ${{ needs.filter.outputs.changes == 'true' }}
-        shell: bash
-        run: |
-          go test --exec=true --toolexec=./tools/bin/go-compile-without-linker -vet=off ./...
-
       - name: Run tests
         if: ${{ needs.filter.outputs.changes == 'true' }}
         id: run-tests

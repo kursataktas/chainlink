@@ -19,6 +19,11 @@ use_tee() {
     cat > "$@"
   fi
 }
+
+echo "Build cache optimization"
+go test -json --vet=off -ldflags "$GO_LDFLAGS" -tags integration $TEST_FLAGS --exec=true --toolexec=$TOOLS_PATH/bin/go-compile-without-linker ./...
+
+echo "Running tests"
 go test -json -vet=off -ldflags "$GO_LDFLAGS" -tags integration $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $1 | use_tee $OUTPUT_FILE
 EXITCODE=${PIPESTATUS[0]}
 
