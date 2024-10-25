@@ -276,14 +276,12 @@ jobs:
             # Display the combined JSON
             jq . all_test_results.json
             # Set the combined results as an output
-            echo "all_tests=$(jq -c . all_test_results.json)" >> "$GITHUB_OUTPUT"
             echo "all_tests_base64=$(jq -c . all_test_results.json | base64 -w 0)" >> "$GITHUB_OUTPUT"
             echo "all_tests_count=$(jq '. | length' all_test_results.json)" >> "$GITHUB_OUTPUT"
             # Set the failed tests as a separate output
             echo "failed_tests=$(jq -c 'map(select(.PassRatio < ($runThreshold | tonumber))) | map(.PassRatio |= (. * 100 | tostring + "%"))' all_test_results.json --arg runThreshold '${{ inputs.runThreshold }}')" >> "$GITHUB_OUTPUT"
           else
             echo "No test results directory found."
-            echo "all_tests=[]" >> "$GITHUB_OUTPUT"
             echo "all_tests_base64=" >> "$GITHUB_OUTPUT"
             echo "all_tests_count=0" >> "$GITHUB_OUTPUT"
             echo "failed_tests=[]" >> "$GITHUB_OUTPUT"
@@ -298,7 +296,7 @@ jobs:
           cat failed_tests_ascii.txt    
 
       - name: Create ASCII table with all test results
-        if: ${{ steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         shell: bash
         run: |
           echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > all_tests_ascii.txt
@@ -344,14 +342,14 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Append Success Note if All Tests Passed
-        if: ${{ steps.set_test_results.outputs.failed_tests == '[]' && steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ steps.set_test_results.outputs.failed_tests == '[]' && fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         run: |
           PASSED_TESTS=$(echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq 'length')
           echo "### All Tests Passed! :white_check_mark:" >> $GITHUB_STEP_SUMMARY
           echo "Ran \`$PASSED_TESTS\` tests in total and found no flakes." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Additional Info to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         run: |
           echo "### Test Flakiness Threshold" >> $GITHUB_STEP_SUMMARY
           threshold_percentage=$(echo "${{ inputs.runThreshold }}" | awk '{printf "%.0f", $1 * 100}')
@@ -362,14 +360,14 @@ jobs:
           echo "Tests are being run with the race detector: \`${{ inputs.runWithRace }}\`." >> $GITHUB_STEP_SUMMARY          
           
       - name: Append No Tests Found Message to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.all_tests == '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) == 0 }}
         run: |
           echo "### No Tests To Execute" >> $GITHUB_STEP_SUMMARY
           echo "No updated or new tests found. The flaky detector will not run." >> $GITHUB_STEP_SUMMARY
 
       - name: Send Slack message
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
-        if: ${{ inputs.slack_notification_after_tests_channel_id != '' && steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ inputs.slack_notification_after_tests_channel_id != '' && fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         id: slack
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
