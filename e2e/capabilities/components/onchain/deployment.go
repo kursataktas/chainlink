@@ -1,12 +1,14 @@
 package onchain
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/smartcontractkit/chainlink-testing-framework/seth"
-	bmerc "github.com/smartcontractkit/chainlink/e2e/capabilities/components/gethwrappers"
 	"math/big"
 	"os"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/smartcontractkit/chainlink-testing-framework/seth"
+	bmerc "github.com/smartcontractkit/chainlink/e2e/capabilities/components/gethwrappers"
 )
 
 type Input struct {

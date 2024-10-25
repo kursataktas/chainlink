@@ -2,6 +2,11 @@ package capabilities_test
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/clclient"
 	"github.com/smartcontractkit/chainlink-testing-framework/framework/components/blockchain"
@@ -10,9 +15,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/seth"
 	burn_mint_erc677 "github.com/smartcontractkit/chainlink/e2e/capabilities/components/gethwrappers"
 	"github.com/smartcontractkit/chainlink/e2e/capabilities/components/onchain"
-	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 type Config struct {

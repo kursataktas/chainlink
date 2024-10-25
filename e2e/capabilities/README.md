@@ -58,7 +58,7 @@ You can provide either `image` or `docker` fields to switch between local build 
 ### Overriding configs
 You can override any configuration by providing more `TOML` files
 ```
-export CTF_CONFIGS=smoke.toml,smoke-another-network.toml
+export CTF_CONFIGS=smoke.toml
 ```
 Changes will be applied right to left
 
