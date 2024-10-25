@@ -83,7 +83,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
 
       - name: Find new or updated test packages
         id: find-tests
@@ -234,7 +234,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
 
       - name: Run tests with flakeguard
         shell: bash
@@ -295,14 +295,14 @@ jobs:
         if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         shell: bash
         run: |
-          echo '${{ steps.set_test_results.outputs.failed_tests_base64 }}' | base64 --decode | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
+          echo '${{ steps.set_test_results.outputs.failed_tests_base64 }}' | base64 --decode | jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
           cat failed_tests_ascii.txt    
 
       - name: Create ASCII table with all test results
         if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         shell: bash
         run: |
-          echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > all_tests_ascii.txt
+          echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > all_tests_ascii.txt
           cat all_tests_ascii.txt
 
       - name: Create GitHub Summary
