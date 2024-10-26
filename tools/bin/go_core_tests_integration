@@ -30,15 +30,21 @@ if [ -z "$INTEGRATION_TEST_FILES" ]; then
   exit 0
 fi
 
+# Get unique directories of integration-tagged test files
+INTEGRATION_TEST_DIRS=$(echo "$INTEGRATION_TEST_FILES" | xargs -n1 dirname | sort -u)
+
+EXITCODE=0
+
 # Run go test for each directory containing integration-tagged tests
 for dir in $INTEGRATION_TEST_DIRS; do
   echo "Running tests in directory: $dir"
-  go test -vet=off -tags integration $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt "$dir" | use_tee -a $OUTPUT_FILE
+  go test -json -vet=off -tags integration $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt "$dir" | use_tee -a $OUTPUT_FILE
   TEST_EXITCODE=${PIPESTATUS[0]}
   if [[ $TEST_EXITCODE != 0 ]]; then
     EXITCODE=$TEST_EXITCODE
   fi
 done
+
 
 # Assert no known sensitive strings present in test logger output
 printf "\n----------------------------------------------\n\n"
