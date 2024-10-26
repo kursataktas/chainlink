@@ -21,7 +21,7 @@ use_tee() {
 }
 
 echo "Running tests"
-go test -vet=off $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $1 | use_tee $OUTPUT_FILE
+go test -vet=off $1 | use_tee $OUTPUT_FILE
 EXITCODE=${PIPESTATUS[0]}
 
 # Assert no known sensitive strings present in test logger output
