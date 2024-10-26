@@ -4,6 +4,9 @@ inputs:
   only-modules:
     description: Set to 'true' to only cache modules
     default: "false"
+  build-cache-suffix:
+    description: For scoping caches to certain jobs/workflows
+    default: ""
   cache-version: 
     description: Set this to cache bust
     default: "1"
@@ -58,7 +61,8 @@ runs:
         path: |
           ${{ steps.go-cache-dir.outputs.gobuildcache }}
         # The lifetime of go build outputs is pretty short, so we make our primary cache key be the branch name
-        key: ${{ runner.os }}-gobuild-${{ inputs.cache-version }}-${{ hashFiles(steps.go-module-path.output.path) }}-${{ steps.branch-name.outputs.current_branch }}
+        key: ${{ runner.os }}-gobuild-${{ inputs.cache-version }}${{ inputs.build-cache-suffix }}-${{ hashFiles(steps.go-module-path.output.path) }}-${{ steps.branch-name.outputs.current_branch }}
         restore-keys: |
-          ${{ runner.os }}-gobuild-${{ inputs.cache-version }}-${{ hashFiles(steps.go-module-path.output.path) }}-
-          ${{ runner.os }}-gobuild-${{ inputs.cache-version }}-
+          ${{ runner.os }}-gobuild-${{ inputs.cache-version }}${{ inputs.build-cache-suffix }}-${{ hashFiles(steps.go-module-path.output.path) }}-
+          ${{ runner.os }}-gobuild-${{ inputs.cache-version }}${{ inputs.build-cache-suffix }}-
+        
