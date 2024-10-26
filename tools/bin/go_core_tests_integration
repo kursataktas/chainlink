@@ -2,7 +2,7 @@
 set -o pipefail
 set +e
 
-SCRIPT_PATH=`dirname "$0"`; SCRIPT_PATH=`eval "cd \"$SCRIPT_PATH\" && pwd"`
+SCRIPT_PATH=$(dirname "$0"); SCRIPT_PATH=$(eval "cd \"$SCRIPT_PATH\" && pwd")
 OUTPUT_FILE=${OUTPUT_FILE:-"./output.txt"}
 USE_TEE="${USE_TEE:-true}"
 
@@ -12,6 +12,7 @@ TOOLS_PATH=${TOOLS_PATH:-"./tools"}
 echo "Failed tests and panics: ---------------------"
 echo ""
 GO_LDFLAGS=$(bash ${TOOLS_PATH}/bin/ldflags)
+
 use_tee() {
   if [ "$USE_TEE" = "true" ]; then
     tee "$@"
@@ -20,8 +21,17 @@ use_tee() {
   fi
 }
 
-echo "Running tests"
-go test -vet=off $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $1 | use_tee $OUTPUT_FILE
+echo "Finding and running integration-tagged tests"
+# Find all _test.go files with the //go:build integration tag
+INTEGRATION_TEST_FILES=$(find . -name '*_test.go' -exec grep -l '//go:build integration' {} +)
+
+if [ -z "$INTEGRATION_TEST_FILES" ]; then
+  echo "No integration-tagged tests found."
+  exit 0
+fi
+
+# Run go test only on the integration-tagged files
+go test -vet=off -tags integration $TEST_FLAGS -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $INTEGRATION_TEST_FILES | use_tee $OUTPUT_FILE
 EXITCODE=${PIPESTATUS[0]}
 
 # Assert no known sensitive strings present in test logger output
