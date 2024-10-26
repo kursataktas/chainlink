@@ -27,6 +27,12 @@ on:
         default: ""
         type: string
 
+env:
+  IS_PR_EVENT: ${{ github.event_name == 'pull_request' }}
+  IS_DISPATCH: ${{ github.event_name == 'workflow_dispatch' }}
+  IS_SCHEDULED_RUN: ${{ github.event_name == 'schedule' }}
+  IS_SCHEDULED_OR_DISPATCH: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+
 jobs:
   filter: # No need to run core tests if there are only changes to the integration-tests
     name: Detect Changes
@@ -138,6 +144,11 @@ jobs:
     steps:
       - name: Checkout the repo
         uses: actions/checkout@v4.2.1
+
+      - name: Change modtime of files to 1 unix timestamp          
+        shell: bash
+        run: |
+          find . -type f,d -exec touch -r {} -d '1970-01-01T00:00:01' {} \; || true
 
       - name: Setup node
         if: ${{ needs.filter.outputs.changes == 'true' }}
