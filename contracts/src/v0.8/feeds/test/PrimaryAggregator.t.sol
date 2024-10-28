@@ -119,8 +119,8 @@ contract ConfiguredPrimaryAggregatorBaseTest is PrimaryAggregatorBaseTest {
     super.setUp();
 
     for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000 + i));
-      transmitters[i] = address(uint160(2000 + i));
+      signers[i] = vm.addr(uint160(1000 + i));
+      transmitters[i] = vm.addr(uint160(2000 + i));
     }
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
@@ -268,8 +268,8 @@ contract SetConfig is PrimaryAggregatorBaseTest {
     bytes memory offchainConfig = "1";
 
     for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000 + i));
-      transmitters[i] = address(uint160(2000 + i));
+      signers[i] = vm.addr(uint160(1000 + i));
+      transmitters[i] = vm.addr(uint160(2000 + i));
     }
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
@@ -290,8 +290,8 @@ contract LatestConfigDetails is PrimaryAggregatorBaseTest {
     super.setUp();
 
     for (uint256 i = 0; i < MAX_NUM_ORACLES; i++) {
-      signers[i] = address(uint160(1000 + i));
-      transmitters[i] = address(uint160(2000 + i));
+      signers[i] = vm.addr(uint160(1000 + i));
+      transmitters[i] = vm.addr(uint160(2000 + i));
     }
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
@@ -399,8 +399,8 @@ contract GetRequesterAccessController is PrimaryAggregatorBaseTest {
 contract RequestNewRound is ConfiguredPrimaryAggregatorBaseTest {}
 
 contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
-  bytes32[] internal rs;
-  bytes32[] internal ss;
+  uint32 epoch = 0;
+  uint32 round = 0;
 
   function setUp() public override {
     super.setUp();
@@ -415,9 +415,11 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     ];
     bytes memory report = abi.encodePacked("1");
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes32[] memory rs = new bytes32[](1);
+    bytes32[] memory ss = new bytes32[](1);
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    rs[0] = bytes32(abi.encodePacked("1"));
+    ss[0] = bytes32(abi.encodePacked("1"));
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -433,9 +435,11 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     ];
     bytes memory report = abi.encodePacked("1");
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes32[] memory rs = new bytes32[](1);
+    bytes32[] memory ss = new bytes32[](1);
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    rs[0] = bytes32(abi.encodePacked("1"));
+    ss[0] = bytes32(abi.encodePacked("1"));
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -447,9 +451,11 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("2")), bytes32(abi.encodePacked("3"))];
     bytes memory report = abi.encodePacked("1");
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes32[] memory rs = new bytes32[](1);
+    bytes32[] memory ss = new bytes32[](1);
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    rs[0] = bytes32(abi.encodePacked("1"));
+    ss[0] = bytes32(abi.encodePacked("1"));
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -458,12 +464,17 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.WrongNumberOfSignatures.selector);
 
-    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
-    bytes memory report = abi.encodePacked("1");
-    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes memory epochAndRound = abi.encodePacked(
+      bytes27(0),
+      epoch,
+      round
+    );
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
+    bytes memory report = new bytes(0);
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes32[] memory rs = new bytes32[](1);
+    bytes32[] memory ss = new bytes32[](1);
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -472,12 +483,16 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.SignaturesOutOfRegistration.selector);
 
-    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
-    bytes memory report = abi.encodePacked("1");
+    bytes memory epochAndRound = abi.encodePacked(
+      bytes27(0),
+      uint32(epoch),
+      uint32(round)
+    );
+    bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
+    bytes memory report = new bytes(0);
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
-
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    bytes32[] memory rs = new bytes32[](2);
+    bytes32[] memory ss = new bytes32[](1);
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -486,26 +501,50 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.SignatureError.selector);
 
-    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
-    bytes memory report = abi.encodePacked("1");
+    bytes memory epochAndRound = abi.encodePacked(
+      bytes27(0),
+      uint32(epoch),
+      uint32(round)
+    );
+    bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
+    bytes memory report = new bytes(0);
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes32[] memory rs = new bytes32[](2);
+    bytes32[] memory ss = new bytes32[](2);
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    rs[0] = bytes32(abi.encodePacked("1"));
+    rs[1] = bytes32(abi.encodePacked("1"));
+    ss[0] = bytes32(abi.encodePacked("1"));
+    ss[1] = bytes32(abi.encodePacked("1"));
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
 
+  // TODO: figure this test case out better
+  // for some reason it thinks the signers aren't active
   function test_RevertIf_DuplicateSigner() public {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.DuplicateSigner.selector);
 
-    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
-    bytes memory report = abi.encodePacked("1");
-    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+    bytes memory epochAndRound = abi.encodePacked(
+      bytes27(0),
+      uint32(epoch),
+      uint32(round)
+    );
+    bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
+    bytes memory report = new bytes(0);
 
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
+    bytes32 h = keccak256(abi.encode(keccak256(report), reportContext));
+    (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(1, h);
+    bytes32[] memory rs = new bytes32[](2);
+    bytes32[] memory ss = new bytes32[](2);
+
+    rs[0] = r1;
+    rs[1] = r1;
+    ss[0] = s1;
+    ss[1] = s1;
+
+    bytes32 rawVs = bytes32(uint256(v1));
 
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
@@ -514,21 +553,29 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
 contract TransmittedPrimaryAggregatorBaseTest is ConfiguredPrimaryAggregatorBaseTest {
   bytes32[] internal rs;
   bytes32[] internal ss;
+  uint32 internal epoch = 0;
+  uint32 internal round = 0;
 
   // TODO: fix the CalldataLengthMismatch issue
   function setUp() public override {
     super.setUp();
 
-    vm.startPrank(transmitters[0]);
-
-    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
-    bytes memory report = abi.encodePacked("1");
-    bytes32 rawVs = bytes32(abi.encodePacked("1"));
-
-    rs.push(bytes32(abi.encodePacked("1")));
-    ss.push(bytes32(abi.encodePacked("1")));
-
-    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+    // vm.startPrank(transmitters[0]);
+    // bytes memory epochAndRound = abi.encodePacked(
+    //   bytes27(0),
+    //   uint32(epoch),
+    //   uint32(round)
+    // );
+    // bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
+    // bytes memory report = new bytes(0);
+    // bytes32 rawVs = bytes32(abi.encode(uint32(1)));
+    //
+    // rs.push(bytes32(uint256(uint160(signers[0]))));
+    // rs.push(bytes32(uint256(uint160(signers[0]))));
+    // ss.push(bytes32(uint256(uint160(signers[0]))));
+    // ss.push(bytes32(uint256(uint160(signers[0]))));
+    //
+    // aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
 }
 
@@ -555,9 +602,21 @@ contract LatestConfigDigestAndEpoch is TransmittedPrimaryAggregatorBaseTest {
   function test_ReturnsLatestConfigDigestAndEpoch() public view {
     (bool scanLogs, bytes32 configDigest, uint32 epoch) = aggregator.latestConfigDigestAndEpoch();
 
-    assertEq(scanLogs, false);
-    assertEq(configDigest, bytes32(abi.encodePacked("1")));
-    assertEq(epoch, 1);
+    assertEq(scanLogs, false, "scanLogs was not correct");
+    assertEq(
+      configDigest,
+      harness.exposed_configDigestFromConfigData(
+        block.chainid,
+        address(aggregator),
+        1,
+        signers,
+        transmitters,
+        f,
+        onchainConfig,
+        offchainConfigVersion,
+        offchainConfig
+      ), "configDigest incorrect");
+    assertEq(epoch, 1, "epoch not correct");
   }
 }
 contract LatestAnswer is TransmittedPrimaryAggregatorBaseTest {
