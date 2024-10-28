@@ -23,6 +23,7 @@ type NonceTrackerTxStore interface {
 type NonceTrackerClient interface {
 	ConfiguredChainID() *big.Int
 	PendingSequenceAt(context.Context, common.Address) (evmtypes.Nonce, error)
+	SequenceAt(ctx context.Context, addr common.Address, blockNum *big.Int) (evmtypes.Nonce, error)
 }
 
 type nonceTracker struct {
@@ -70,8 +71,8 @@ func (s *nonceTracker) getSequenceForAddr(ctx context.Context, address common.Ad
 		return seq, nil
 	}
 	// Look for nonce on-chain if no tx found for address in TxStore or if error occurred
-	// Returns the nonce that should be used for the next transaction so no need to increment
-	nonce, err := s.client.PendingSequenceAt(ctx, address)
+	// Returns last mined nonce +1 that should be used for the next transaction
+	nonce, err := s.client.SequenceAt(ctx, address, nil)
 	if err == nil {
 		return nonce, nil
 	}
