@@ -34,6 +34,7 @@ type NodeInfo struct {
 	Name        string                   // name of the node, used to identify the node, helpful in logs
 	AdminAddr   string                   // admin address to send payments to, applicable only for non-bootstrap nodes
 	MultiAddr   string                   // multi address denoting node's FQN (needed for deriving P2PBootstrappers in OCR), applicable only for bootstrap nodes
+	Labels      map[string]string        // labels to use when registering the node with job distributor
 }
 
 type DON struct {
@@ -104,6 +105,12 @@ func NewRegisteredDON(ctx context.Context, nodeInfo []NodeInfo, jd JobDistributo
 			return nil, fmt.Errorf("failed to create node %d: %w", i, err)
 		}
 		// node Labels so that it's easier to query them
+		for key, value := range info.Labels {
+			node.labels = append(node.labels, &ptypes.Label{
+				Key:   key,
+				Value: pointer.ToString(value),
+			})
+		}
 		if info.IsBootstrap {
 			// create multi address for OCR2, applicable only for bootstrap nodes
 			if info.MultiAddr == "" {
