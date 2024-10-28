@@ -144,6 +144,7 @@ func TestUSDCTokenTransfer(t *testing.T) {
 		MCMSConfig:         ccdeploy.NewTestMCMSConfig(t, e),
 		CapabilityRegistry: state.Chains[tenv.HomeChainSel].CapabilityRegistry.Address(),
 		FeeTokenContracts:  tenv.FeeTokenContracts,
+		OCRSecrets: deployment.XXXGenerateTestOCRSecrets(),
 		USDCConfig: ccdeploy.USDCConfig{
 			Enabled: true,
 			USDCAttestationConfig: ccdeploy.USDCAttestationConfig{
