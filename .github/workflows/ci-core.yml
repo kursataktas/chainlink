@@ -14,8 +14,7 @@ on:
   merge_group:
   pull_request:
   schedule:
-    # Every 6 hours
-    - cron: "0 0,6,12,18 * * *"
+    - cron: "0 */1 * * *"
   workflow_dispatch:
     inputs:
       distinct_run_name:
@@ -53,6 +52,13 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         id: ignore-filter
         run: echo "changes=true" >> $GITHUB_OUTPUT
+
+      - name: Show github context
+        run: |
+          echo "head_ref: ${{ github.head_ref}}"
+          echo "base_ref: ${{ github.base_ref}}"
+          echo "ref_name: ${{ github.ref_name }}"
+          echo "ref: ${{ github.ref }}"
 
   golangci:
     # We don't directly merge dependabot PRs, so let's not waste the resources
@@ -262,7 +268,7 @@ jobs:
     needs: [filter, core]
     name: Flakey Test Detection
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     env:
       CL_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/chainlink_test?sslmode=disable
     permissions:
@@ -399,6 +405,24 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_SCANNER_OPTS: "-Xms6g -Xmx8g"
+
+  trigger-flaky-test-detection:
+    name: Find New Flaky Tests
+    uses: ./.github/workflows/find-new-flaky-tests.yml
+    if: ${{ github.event_name == 'pull_request' }}
+    with:
+      repoUrl: 'https://github.com/smartcontractkit/chainlink'
+      baseRef: ${{ github.base_ref }}
+      headRef: ${{ github.head_ref }}
+      runCount: '5'
+      runThreshold: '0.9'
+      runWithRace: true
+      findByTestFilesDiff: true
+      findByAffectedPackages: false
+      slack_notification_after_tests_channel_id: 'C07DKUTAV2L'
+      slack_notification_after_tests_name: 'Flaky Test Detection'
+    secrets:
+      SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
 
   clean:
     name: Clean Go Tidy & Generate

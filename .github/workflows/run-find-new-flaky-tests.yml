@@ -3,6 +3,11 @@ name: Find New Flaky Tests
 on:
   workflow_dispatch:
     inputs:
+      repoUrl:
+        description: 'The URL of the repository to run the flaky test detection.'
+        required: true
+        type: string
+        default: 'https://github.com/smartcontractkit/chainlink'
       baseRef:
         required: true
         type: string
@@ -52,6 +57,7 @@ jobs:
     name: Find New Flaky Tests
     uses: ./.github/workflows/find-new-flaky-tests.yml
     with:
+      repoUrl: ${{ inputs.repoUrl }}
       baseRef: ${{ inputs.baseRef }}
       headRef: ${{ inputs.headRef }}
       runCount: ${{ inputs.runCount }}

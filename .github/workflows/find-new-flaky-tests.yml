@@ -3,6 +3,10 @@ name: Find New Flaky Tests
 on:
   workflow_call:
     inputs:
+      repoUrl:
+        required: true
+        type: string
+        description: 'The URL of the repository to compare changes for detecting flaky tests.'
       baseRef:
         required: true
         type: string
@@ -83,7 +87,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
 
       - name: Find new or updated test packages
         id: find-tests
@@ -95,7 +99,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $PACKAGES
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
@@ -109,7 +113,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
           echo $TEST_FILES
           echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
           
@@ -178,9 +182,8 @@ jobs:
           prod: "true"
       - name: Setup Go
         uses: ./.github/actions/setup-go
-      # TODO: uncomment   
-      # - name: Setup Solana
-      #   uses: ./.github/actions/setup-solana
+      - name: Setup Solana
+        uses: ./.github/actions/setup-solana
       - name: Setup wasmd
         uses: ./.github/actions/setup-wasmd
       - name: Setup Postgres
@@ -209,32 +212,15 @@ jobs:
           pushd $(go list -m -f "{{.Dir}}" github.com/smartcontractkit/chainlink-starknet/relayer)
           go install ./pkg/chainlink/cmd/chainlink-starknet
           popd
-
-      # - name: Setup Go
-      #   uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
-      #   with:
-      #     check-latest: true        
-      # - name: Setup test database
-      #   shell: sh
-      #   run: make setup-testdb
-      # - name: Source database environment variables
-      #   run: source .dbenv
-
       - name: Clean test cache
         run: go clean -testcache
-
-      # - name: Set up Go 1.21.9
-      #   uses: actions/setup-go@v3
-      #   with:
-      #     go-version: '1.21.9'        
-
       - name: Generate random id
         id: gen_id
         run: echo "id=$(uuidgen)" >> "$GITHUB_OUTPUT"
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@4d00ee448805483feadb90fa4ba9933d8fc9ffb6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
 
       - name: Run tests with flakeguard
         shell: bash
@@ -276,39 +262,40 @@ jobs:
             # Display the combined JSON
             jq . all_test_results.json
             # Set the combined results as an output
-            echo "all_tests=$(jq -c . all_test_results.json)" >> "$GITHUB_OUTPUT"
-            echo "all_tests_base64=$(jq -c . all_test_results.json | base64 -w 0)" >> "$GITHUB_OUTPUT"
-            echo "all_tests_count=$(jq '. | length' all_test_results.json)" >> "$GITHUB_OUTPUT"
+            all_tests=$(jq -c . all_test_results.json)
+            echo "all_tests_count=$(echo $all_tests | jq 'length')" >> "$GITHUB_OUTPUT"
+            echo "all_tests_base64=$(echo $all_tests | base64 -w 0)" >> "$GITHUB_OUTPUT"
             # Set the failed tests as a separate output
-            echo "failed_tests=$(jq -c 'map(select(.PassRatio < ($runThreshold | tonumber))) | map(.PassRatio |= (. * 100 | tostring + "%"))' all_test_results.json --arg runThreshold '${{ inputs.runThreshold }}')" >> "$GITHUB_OUTPUT"
+            failed_tests=$(jq -c 'map(select(.PassRatio < ($runThreshold | tonumber))) | map(.PassRatio |= (. * 100 | tostring + "%"))' all_test_results.json --arg runThreshold '${{ inputs.runThreshold }}')
+            echo "failed_tests_count=$(echo $failed_tests | jq 'length')" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_base64=$(echo $failed_tests | base64 -w 0)" >> "$GITHUB_OUTPUT"
           else
             echo "No test results directory found."
-            echo "all_tests=[]" >> "$GITHUB_OUTPUT"
             echo "all_tests_base64=" >> "$GITHUB_OUTPUT"
             echo "all_tests_count=0" >> "$GITHUB_OUTPUT"
-            echo "failed_tests=[]" >> "$GITHUB_OUTPUT"
-            echo "failed_tests_escaped=[]" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_base64=" >> "$GITHUB_OUTPUT"
+            echo "failed_tests_count=0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create ASCII table with failed test results
-        if: ${{ steps.set_test_results.outputs.failed_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         shell: bash
         run: |
-          echo '${{ steps.set_test_results.outputs.failed_tests }}' | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
+          echo '${{ steps.set_test_results.outputs.failed_tests_base64 }}' | base64 --decode | jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > failed_tests_ascii.txt
           cat failed_tests_ascii.txt    
 
       - name: Create ASCII table with all test results
-        if: ${{ steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         shell: bash
         run: |
-          echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq -r '["TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------"], (.[] | [.TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > all_tests_ascii.txt
+          echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' | column -t -s$'\t' > all_tests_ascii.txt
           cat all_tests_ascii.txt
 
       - name: Create GitHub Summary
         run: |
           echo "## Flaky Test Detection Summary" >> $GITHUB_STEP_SUMMARY
           echo "### Comparative Test Analysis" >> $GITHUB_STEP_SUMMARY
-          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`." >> $GITHUB_STEP_SUMMARY
+          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\`. See all changes [here](${{ inputs.repoUrl }}/compare/${{ inputs.baseRef }}...${{ inputs.headRef }}#files_bucket)." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Changed Test Files to GitHub Summary
         if: ${{ needs.find-tests.outputs.changed_test_files != '' && inputs.findByTestFilesDiff && !inputs.findByAffectedPackages }}
@@ -333,7 +320,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Append Failed Tests to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.failed_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         run: |
           ALL_TESTS=$(echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq 'length')
           threshold_percentage=$(echo "${{ inputs.runThreshold }}" | awk '{printf "%.0f", $1 * 100}')
@@ -344,14 +331,14 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Append Success Note if All Tests Passed
-        if: ${{ steps.set_test_results.outputs.failed_tests == '[]' && steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 && fromJson(steps.set_test_results.outputs.failed_tests_count) == 0 }}
         run: |
           PASSED_TESTS=$(echo '${{ steps.set_test_results.outputs.all_tests_base64 }}' | base64 --decode | jq 'length')
           echo "### All Tests Passed! :white_check_mark:" >> $GITHUB_STEP_SUMMARY
           echo "Ran \`$PASSED_TESTS\` tests in total and found no flakes." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Additional Info to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         run: |
           echo "### Test Flakiness Threshold" >> $GITHUB_STEP_SUMMARY
           threshold_percentage=$(echo "${{ inputs.runThreshold }}" | awk '{printf "%.0f", $1 * 100}')
@@ -362,14 +349,14 @@ jobs:
           echo "Tests are being run with the race detector: \`${{ inputs.runWithRace }}\`." >> $GITHUB_STEP_SUMMARY          
           
       - name: Append No Tests Found Message to GitHub Summary
-        if: ${{ steps.set_test_results.outputs.all_tests == '[]' }}
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) == 0 }}
         run: |
           echo "### No Tests To Execute" >> $GITHUB_STEP_SUMMARY
           echo "No updated or new tests found. The flaky detector will not run." >> $GITHUB_STEP_SUMMARY
 
       - name: Send Slack message
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
-        if: ${{ inputs.slack_notification_after_tests_channel_id != '' && steps.set_test_results.outputs.all_tests != '[]' }}
+        if: ${{ inputs.slack_notification_after_tests_channel_id != '' && fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         id: slack
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
