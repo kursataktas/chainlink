@@ -24,7 +24,7 @@ abstract contract SiameseAggregatorBase {
     Report memory report
   ) public virtual;
 
-  function _duplicateReport(Report memory report, Transmission memory transmission) internal returns (bool) {
+  function _duplicateReport(Report memory report, Transmission memory transmission) internal pure returns (bool) {
     // Reports don't have Round IDs so compare based on observation timestamp and answer.
     int192 reportAnswer = report.observations[report.observations.length / 2];
 

@@ -99,6 +99,7 @@ contract ConfiguredPrimaryAggregatorBaseTest is PrimaryAggregatorBaseTest {
   bytes internal onchainConfig = abi.encodePacked(uint8(1), MIN_ANSWER, MAX_ANSWER);
   uint64 internal offchainConfigVersion = 1;
   bytes internal offchainConfig = "1";
+  bytes32 internal configDigest;
 
   function setUp() public virtual override {
     super.setUp();
@@ -109,6 +110,17 @@ contract ConfiguredPrimaryAggregatorBaseTest is PrimaryAggregatorBaseTest {
     }
 
     aggregator.setConfig(signers, transmitters, f, onchainConfig, offchainConfigVersion, offchainConfig);
+    configDigest = harness.exposed_configDigestFromConfigData(
+      block.chainid,
+      address(aggregator),
+      1,
+      signers,
+      transmitters,
+      f,
+      onchainConfig,
+      offchainConfigVersion,
+      offchainConfig
+    );
   }
 }
 
@@ -380,6 +392,19 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     super.setUp();
   }
 
+  function test_RevertIf_UnauthorizedTransmitter() public {
+    vm.expectRevert(PrimaryAggregator.UnauthorizedTransmitter.selector);
+    bytes32[3] memory reportContext =
+      [bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("2")), bytes32(abi.encodePacked("3"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
   function test_RevertIf_ConfigDigestMismatch() public {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.ConfigDigestMismatch.selector);
@@ -395,42 +420,34 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
 
-  // function test_RevertIf_UnauthorizedTransmitter() public {
-  //   vm.expectRevert("unauthorized transmitter");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
-  //
-  // function test_RevertIf_ConfigDigestMismatch() public {
-  //   vm.expectRevert("configDigest mismatch");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
-  //
-  // function test_RevertIf_WrongNumberOfSignatures() public {
-  //   vm.expectRevert("wrong number of signatures");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
-  //
+  function test_RevertIf_CalldataLengthMismatch() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.CalldataLengthMismatch.selector);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("2")), bytes32(abi.encodePacked("3"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_WrongNumberOfSignatures() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.WrongNumberOfSignatures.selector);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
   // function test_RevertIf_SignaturesOutOfRegistration() public {
   //   vm.expectRevert("signatures out of registration");
   //
