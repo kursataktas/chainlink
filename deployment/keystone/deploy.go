@@ -156,6 +156,7 @@ type DonInfo struct {
 
 type Node struct {
 	ID           string
+	P2PID        string
 	Name         string
 	PublicKey    *string
 	ChainConfigs []*nodev1.ChainConfig
@@ -166,7 +167,14 @@ func NodesFromJD(name string, nodeIDs []string, jd deployment.OffchainClient) ([
 	nodesFromJD, err := jd.ListNodes(context.Background(), &nodev1.ListNodesRequest{
 		Filter: &nodev1.ListNodesRequest_Filter{
 			Enabled: 1,
-			Ids:     nodeIDs,
+			Ids:     nodeIDs, // TODO: use p2p_id selectors instead of IDs
+			// Selectors: []*ptypes.Selector{
+			// 	{
+			// 		Key:   "p2p_id",
+			// 		Op:    ptypes.SelectorOp_IN,
+			// 		Value: pointer.ToString(""), // TODO:
+			// 	},
+			// },
 		},
 	})
 	if err != nil {
@@ -184,11 +192,20 @@ func NodesFromJD(name string, nodeIDs []string, jd deployment.OffchainClient) ([
 		if idx < 0 {
 			return nil, fmt.Errorf("node id not found")
 		}
+		jdNode := nodesFromJD.Nodes[idx]
+
+		// labelIdx := slices.IndexFunc(jdNode.GetLabels(), func(label *ptypes.Label) bool { return label.Key == "p2p_id" })
+		// if labelIdx < 0 {
+		// 	return nil, fmt.Errorf("p2p_id label not found")
+		// }
+		// p2pID := *jdNode.Labels[labelIdx].Value
 
 		nodes = append(nodes, Node{
-			ID:        nodeID,
+			ID: nodeID,
+			// P2PID:        p2pID, // TODO:
+			P2PID:     nodeID,
 			Name:      name,
-			PublicKey: &nodesFromJD.Nodes[idx].PublicKey,
+			PublicKey: &jdNode.PublicKey,
 			// PublicKey TODO fetch via ListNodes
 			ChainConfigs: nodeChainConfigs.GetChainConfigs(),
 		})

@@ -2,6 +2,7 @@ package clo
 
 import (
 	"context"
+	"fmt"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -61,7 +62,7 @@ func (j JobClient) GetNode(ctx context.Context, in *nodev1.GetNodeRequest, opts 
 
 func (j JobClient) ListNodes(ctx context.Context, in *nodev1.ListNodesRequest, opts ...grpc.CallOption) (*nodev1.ListNodesResponse, error) {
 	//TODO CCIP-3108
-	var fiterIds map[string]struct{}
+	fiterIds := make(map[string]any)
 	include := func(id string) bool {
 		if in.Filter == nil || len(in.Filter.Ids) == 0 {
 			return true
@@ -82,7 +83,7 @@ func (j JobClient) ListNodes(ctx context.Context, in *nodev1.ListNodesRequest, o
 				nodes = append(nodes, &nodev1.Node{
 					Id:          n.ID,
 					Name:        n.Name,
-					PublicKey:   *n.PublicKey, // is this the correct val?
+					PublicKey:   *n.PublicKey,
 					IsEnabled:   n.Enabled,
 					IsConnected: n.Connected,
 				})
@@ -184,10 +185,24 @@ func cloNodeToChainConfigs(n *models.Node) []*nodev1.ChainConfig {
 }
 
 func cloChainCfgToJDChainCfg(ccfg *models.NodeChainConfig) *nodev1.ChainConfig {
+	var ctype nodev1.ChainType
+	switch ccfg.Network.ChainType {
+	case models.ChainTypeEvm:
+		ctype = nodev1.ChainType_CHAIN_TYPE_EVM
+	case models.ChainTypeSolana:
+		ctype = nodev1.ChainType_CHAIN_TYPE_SOLANA
+	case models.ChainTypeStarknet:
+		ctype = nodev1.ChainType_CHAIN_TYPE_STARKNET
+	case models.ChainTypeAptos:
+		ctype = nodev1.ChainType_CHAIN_TYPE_APTOS
+	default:
+		panic(fmt.Sprintf("Unsupported chain family %v", ccfg.Network.ChainType))
+	}
+
 	return &nodev1.ChainConfig{
 		Chain: &nodev1.Chain{
 			Id:   ccfg.Network.ChainID,
-			Type: nodev1.ChainType_CHAIN_TYPE_EVM, // TODO: write conversion func from clo to jd tyes
+			Type: ctype,
 		},
 		AccountAddress: ccfg.AccountAddress,
 		AdminAddress:   ccfg.AdminAddress,

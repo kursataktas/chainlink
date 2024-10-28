@@ -118,7 +118,7 @@ func newOcr2NodeFromClo(n *Node, registryChainSel uint64) (*ocr2Node, error) {
 	if exists {
 		cfgs[chaintype.Aptos] = aptosCC
 	}
-	return newOcr2Node(n.ID, cfgs, *n.PublicKey)
+	return newOcr2Node(n.P2PID, cfgs, *n.PublicKey)
 }
 
 func newOcr2Node(id string, ccfgs map[chaintype.ChainType]*v1.ChainConfig, csaPubKey string) (*ocr2Node, error) {
@@ -212,7 +212,7 @@ func (dc DonInfo) nodeIdToNop(cs uint64) (map[string]capabilities_registry.Capab
 			//TODO validate chainType field
 			if chain.Chain.Id == cidStr {
 				found = true
-				out[node.ID] = capabilities_registry.CapabilitiesRegistryNodeOperator{
+				out[node.P2PID] = capabilities_registry.CapabilitiesRegistryNodeOperator{
 					Name:  node.Name,
 					Admin: adminAddr(chain.AdminAddress),
 				}
