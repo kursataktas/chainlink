@@ -2,9 +2,12 @@ package webapicapabilities
 
 import (
 	"context"
+	"crypto/sha1"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -58,9 +61,13 @@ type handler struct {
 	wg              sync.WaitGroup
 	// each gateway node has a map of trigger IDs to trigger configs
 	triggersConfig AllNodesTriggersConfig
+	// One of the nodes' trigger configs that is part of consensus
+	consensusConfig TriggersConfig
 }
 
 type HandlerConfig struct {
+	// Is this part of standard capability so doesn't need to be defined here?
+	F                       uint                     `json:"F"`
 	NodeRateLimiter         common.RateLimiterConfig `json:"nodeRateLimiter"`
 	MaxAllowedMessageAgeSec uint                     `json:"maxAllowedMessageAgeSec"`
 }
@@ -256,6 +263,50 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 }
 
 func (h *handler) updateTriggerConsensus() {
+	// calculate the mode of the trigger configs to determine consensus
+
+	// 1. Make list of node configs that haven't expired
+	triggers := h.triggersConfig.triggersConfigMap
+
+	// 2. Make list of hashes of each node's config.
+	// 3. Count the number of times each hash appears.
+
+	triggersHashmap := make(map[string]int)
+	triggersHashmapByNodeId := make(map[string]string)
+
+	for index, triggerConfig := range triggers {
+		s := fmt.Sprintf("%v", triggerConfig)
+		h := sha1.New()
+		h.Write([]byte(s))
+		hash := hex.EncodeToString(h.Sum(nil))
+		triggersHashmap[hash]++
+		// the node that has this hash
+		triggersHashmapByNodeId[hash] = index
+	}
+
+	// 4. Find the hash that appears the most.
+	// https://stackoverflow.com/questions/18695346/how-can-i-sort-a-mapstringint-by-its-values
+
+	type kv struct {
+		Hash  string
+		Value int
+	}
+	var ss []kv
+	for k, v := range triggersHashmap {
+		ss = append(ss, kv{k, v})
+	}
+
+	sort.Slice(ss, func(i, j int) bool {
+		return ss[i].Value > ss[j].Value
+	})
+	// 5. Check if the hash that appears the most appears more than F times.
+	if ss[0].Value < int(h.config.F)+1 {
+		// 6. If it doesn't, do nothing
+		return
+	}
+	// 7. If it does, update the consensus config to that config.
+	NodeId := triggersHashmapByNodeId[ss[0].Hash]
+	h.consensusConfig = h.triggersConfig.triggersConfigMap[NodeId]
 
 }
 

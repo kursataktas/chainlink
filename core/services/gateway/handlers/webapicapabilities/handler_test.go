@@ -60,6 +60,7 @@ func setupHandler(t *testing.T) (*handler, *mocks.HTTPClient, *handlermocks.DON,
 		PerSenderBurst: 100,
 	}
 	handlerConfig := HandlerConfig{
+		F:                       1,
 		NodeRateLimiter:         nodeRateLimiterConfig,
 		MaxAllowedMessageAgeSec: 30,
 	}
@@ -326,8 +327,9 @@ func TestHandlerReceiveHTTPMessageFromClient(t *testing.T) {
 func convertValuesMapToBytes(valuesMap map[string]*values.Map) []byte {
 	var workflowConfigs = make(map[string]string)
 
-	// convert map[string]*values.Map to *values.Map
 	// not values.FromMapValueProto(valuesMap)
+	// convert valuesMap (map[string]*values.Map) to *pb.Map
+
 	configProtoMap := values.ProtoMap(valuesMap)
 	configProtoBytes, _ := proto.Marshal(configProtoMap)
 	encoded := base64.StdEncoding.EncodeToString(configProtoBytes)
@@ -369,6 +371,22 @@ func TestHandlerRecieveMetadataMessageFromWorkflowNode(t *testing.T) {
 	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId"])
 	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId"].lastUpdatedAt)
 
-	// These are not the same type
 	require.Equal(t, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig, triggerConfigs)
+	require.Empty(t, handler.consensusConfig)
+	msg2 := &api.Message{
+		Body: api.MessageBody{
+			MessageId: "123",
+			Method:    MethodWebAPITriggerUpdateMetadata,
+			DonId:     "testDonId2",
+			Payload:   cfgBytes,
+		},
+	}
+	err = handler.HandleNodeMessage(ctx, msg2, nodeAddr)
+
+	require.Equal(t, handler.consensusConfig, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig)
+
+	// Other test cases:
+	// one node updated with different value, no change as no new consensus
+	// two nodes updated with equal but different value, change to new consensus
+	// two nodes updated with equal different value but out of time window so no change.
 }
