@@ -1,0 +1,9 @@
+ChainID = '17000'
+FinalityTagEnabled = true
+
+[GasEstimator]
+Mode = 'FeeHistory'
+EIP1559DynamicFees = true
+
+[GasEstimator.FeeHistory]
+CacheTimeout = '12s'
