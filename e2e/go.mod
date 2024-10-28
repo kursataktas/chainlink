@@ -6,7 +6,7 @@ go 1.22.8
 
 require (
 	github.com/ethereum/go-ethereum v1.14.11
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.1.1-0.20241025141857-713bfc3d118c
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.1.1-0.20241028112910-b1ec2dedbf69
 	github.com/smartcontractkit/chainlink-testing-framework/seth v1.50.4
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.33.0
@@ -76,7 +76,6 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.3.1 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kelseyhightower/envconfig v1.4.0 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.8 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect

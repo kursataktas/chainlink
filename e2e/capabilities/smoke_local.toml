@@ -22,5 +22,5 @@
 
     [nodeset.node_specs.node]
       capabilities = ["./ctf", "./ctf2"]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      image = "localhost:5050/chainlink:latest"
       pull_image = true

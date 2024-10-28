@@ -20,7 +20,7 @@ type Output struct {
 }
 
 func NewProductOnChainDeployment(in *Input) (*Output, error) {
-	if in.Out.UseCache {
+	if in.Out != nil && in.Out.UseCache {
 		return in.Out, nil
 	}
 
@@ -32,6 +32,7 @@ func NewProductOnChainDeployment(in *Input) (*Output, error) {
 		WithRpcUrl(in.URL).
 		WithProtections(true, false, &t).
 		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
+		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{os.Getenv("PRIVATE_KEY")}).
 		Build()
 	if err != nil {

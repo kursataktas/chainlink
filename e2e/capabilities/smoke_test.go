@@ -16,7 +16,7 @@ import (
 )
 
 type Config struct {
-	FundingETH         float64           `toml:"funds_eth" default:"30.0"`
+	FundingETH         float64           `toml:"funds_eth"`
 	BlockchainA        *blockchain.Input `toml:"blockchain_a" validate:"required"`
 	Contracts          *onchain.Input    `toml:"contracts" validate:"required"`
 	MockerDataProvider *fake.Input       `toml:"data_provider" validate:"required"`
@@ -49,6 +49,7 @@ func TestDON(t *testing.T) {
 	sc, err := seth.NewClientBuilder().
 		WithRpcUrl(bc.Nodes[0].HostWSUrl).
 		WithGasPriceEstimations(true, 0, seth.Priority_Fast).
+		WithTracing(seth.TracingLevel_All, []string{seth.TraceOutput_Console}).
 		WithPrivateKeys([]string{pkey}).
 		Build()
 	require.NoError(t, err)

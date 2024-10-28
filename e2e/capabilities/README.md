@@ -40,6 +40,15 @@ export PRIVATE_KEY="..."
 go test -v -run TestDON
 ```
 
+### Using local image
+From the repository root
+```
+docker run -d -p 5050:5000 --name local-registry registry:2
+docker build -t localhost:5050/chainlink:latest -f ./core/chainlink.Dockerfile .
+docker push localhost:5050/chainlink:latest
+```
+Use [local](smoke_local.toml) config with this image 
+
 ### Overriding configs
 You can override any configuration by providing more `TOML` files
 ```
