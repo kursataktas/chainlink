@@ -53,13 +53,6 @@ jobs:
         id: ignore-filter
         run: echo "changes=true" >> $GITHUB_OUTPUT
 
-      - name: Show github context
-        run: |
-          echo "head_ref: ${{ github.head_ref}}"
-          echo "base_ref: ${{ github.base_ref}}"
-          echo "ref_name: ${{ github.ref_name }}"
-          echo "ref: ${{ github.ref }}"
-
   golangci:
     # We don't directly merge dependabot PRs, so let's not waste the resources
     if: ${{ (github.event_name == 'pull_request' ||  github.event_name == 'schedule') && github.actor != 'dependabot[bot]' }}
