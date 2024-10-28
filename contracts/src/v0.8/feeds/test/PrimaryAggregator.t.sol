@@ -468,63 +468,150 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     aggregator.transmit(reportContext, report, rs, ss, rawVs);
   }
 
-  // function test_RevertIf_SignaturesOutOfRegistration() public {
-  //   vm.expectRevert("signatures out of registration");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
-  //
-  // function test_RevertIf_SignatureError() public {
-  //   vm.expectRevert("signature error");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
-  //
-  // function test_RevertIf_DuplicateSigner() public {
-  //   vm.expectRevert("duplicate signer");
-  //
-  //   bytes32[3] memory reportContext = ["1", "2", "3"];
-  //   bytes memory report = "1";
-  //   bytes32[] memory rs = ["1"];
-  //   bytes32[] memory ss = ["1"];
-  //   bytes32 rawVs = "1";
-  //
-  //   aggregator.transmit(reportContext, report, rs, ss, rawVs);
-  // }
+  function test_RevertIf_SignaturesOutOfRegistration() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.SignaturesOutOfRegistration.selector);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_SignatureError() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.SignatureError.selector);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+
+  function test_RevertIf_DuplicateSigner() public {
+    vm.startPrank(transmitters[0]);
+    vm.expectRevert(PrimaryAggregator.DuplicateSigner.selector);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+}
+
+contract TransmittedPrimaryAggregatorBaseTest is ConfiguredPrimaryAggregatorBaseTest {
+  bytes32[] internal rs;
+  bytes32[] internal ss;
+
+  // TODO: fix the CalldataLengthMismatch issue
+  function setUp() public override {
+    super.setUp();
+
+    vm.startPrank(transmitters[0]);
+
+    bytes32[3] memory reportContext = [configDigest, bytes32(abi.encodePacked("1")), bytes32(abi.encodePacked("1"))];
+    bytes memory report = abi.encodePacked("1");
+    bytes32 rawVs = bytes32(abi.encodePacked("1"));
+
+    rs.push(bytes32(abi.encodePacked("1")));
+    ss.push(bytes32(abi.encodePacked("1")));
+
+    aggregator.transmit(reportContext, report, rs, ss, rawVs);
+  }
+}
+
+contract LatestTransmissionDetails is TransmittedPrimaryAggregatorBaseTest {
+  function test_RevertIf_NotEOA() public {
+    vm.expectRevert(PrimaryAggregator.OnlyCallableByEOA.selector);
+    aggregator.latestTransmissionDetails();
+  }
+
+  function test_ReturnsLatestTransmissionDetails() public {
+    (bytes32 configDigest, uint32 epoch, uint8 round, int192 latestAnswer, uint64 latestTimestamp) = aggregator
+      .latestTransmissionDetails();
+
+    assertEq(configDigest, bytes32(abi.encodePacked("1")));
+    assertEq(epoch, 1);
+    assertEq(round, 1);
+    assertEq(latestAnswer, 1);
+    assertEq(latestTimestamp, 1);
+  }
 }
 
 // TODO: once transmit logic is updated we can test these better
-contract LatestTransmissionDetails is ConfiguredPrimaryAggregatorBaseTest {}
+contract LatestConfigDigestAndEpoch is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsLatestConfigDigestAndEpoch() public view {
+    (bool scanLogs, bytes32 configDigest, uint32 epoch) = aggregator.latestConfigDigestAndEpoch();
 
-contract LatestConfigDigestAndEpoch is ConfiguredPrimaryAggregatorBaseTest {}
+    assertEq(scanLogs, false);
+    assertEq(configDigest, bytes32(abi.encodePacked("1")));
+    assertEq(epoch, 1);
+  }
+}
+contract LatestAnswer is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsLatestAnswer() public view {
+    assertEq(aggregator.latestAnswer(), 1);
+  }
+}
+contract LatestTimestamp is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsLatestTimestamp() public view {
+    assertEq(aggregator.latestTimestamp(), 1);
+  }
+}
+contract LatestRound is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsLatestRound() public view {
+    assertEq(aggregator.latestRound(), 1);
+  }
+}
+contract GetAnswer is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsCorrectAnswer() public view {
+    assertEq(aggregator.getAnswer(1), 1);
+  }
+}
+contract GetTimestamp is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsCorrectTimestamp() public view {
+    assertEq(aggregator.getTimestamp(1), 1);
+  }
+}
+contract Description is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsCorrectDescription() public view {
+    assertEq(aggregator.description(), "TEST");
+  }
+}
+contract GetRoundData is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsCorrectRoundData() public view {
+    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator.getRoundData(1);
 
-contract LatestAnswer is ConfiguredPrimaryAggregatorBaseTest {}
+    assertEq(roundId, 1);
+    assertEq(answer, 1);
+    assertEq(startedAt, 1);
+    assertEq(updatedAt, 1);
+    assertEq(answeredInRound, 1);
+  }
+}
+contract LatestRoundData is TransmittedPrimaryAggregatorBaseTest {
+  function test_ReturnsLatestRoundData() public view {
+    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator.latestRoundData();
 
-contract LatestTimestamp is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract LatestRound is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract GetAnswer is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract GetTimestamp is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract Description is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract GetRoundData is ConfiguredPrimaryAggregatorBaseTest {}
-
-contract LatestRoundData is ConfiguredPrimaryAggregatorBaseTest {}
+    assertEq(roundId, 1);
+    assertEq(answer, 1);
+    assertEq(startedAt, 1);
+    assertEq(updatedAt, 1);
+    assertEq(answeredInRound, 1);
+  }
+}
 
 contract SetLinkToken is PrimaryAggregatorBaseTest {
   event LinkTokenSet(LinkTokenInterface indexed oldLinkToken, LinkTokenInterface indexed newLinkToken);

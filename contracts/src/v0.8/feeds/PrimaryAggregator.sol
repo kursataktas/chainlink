@@ -444,6 +444,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * guarantee of causality between the request and the report at aggregatorRoundId.
    */
 
+  // TODO: i think we can remove this function entirely
   function requestNewRound() external returns (uint80) {
     if (!(msg.sender == owner() || s_requesterAccessController.hasAccess(msg.sender, msg.data))) {
       revert OnlyOwnerAndRequesterCanCall();
@@ -561,7 +562,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   error WrongNumberOfSignatures();
   error SignaturesOutOfRegistration();
   error SignatureError();
-  error DuplicatedSigner();
+  error DuplicateSigner();
 
   /// @inheritdoc OCR2Abstract
   function transmit(
@@ -629,7 +630,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
       // The first byte of the mask can be 0, because we only ever have 31 oracles
       if (signedCount & 0x0001010101010101010101010101010101010101010101010101010101010101 != signedCount) {
-        revert DuplicatedSigner();
+        revert DuplicateSigner();
       }
     }
 
