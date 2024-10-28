@@ -803,11 +803,15 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   /**
    * @return answers are stored in fixed-point format, with this many digits of precision
    */
+  // TODO: determine right way to handle this
+  // solhint-disable-next-line chainlink-solidity/prefix-immutable-variables-with-i
   uint8 public immutable override decimals;
 
   /**
    * @notice aggregator contract version
    */
+  // TODO: determine right way to handle this
+  // solhint-disable-next-line chainlink-solidity/all-caps-constant-storage-variables
   uint256 public constant override version = 6;
 
   string internal s_description;
