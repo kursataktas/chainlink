@@ -2819,7 +2819,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 2
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '45s'
 
 [Transactions]
@@ -3129,7 +3129,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 2
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '40s'
 
 [Transactions]
@@ -3234,7 +3234,7 @@ NoNewHeadsThreshold = '3m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '2m0s'
 
 [Transactions]
@@ -3546,7 +3546,7 @@ NoNewHeadsThreshold = '12m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 100
 RPCBlockQueryDelay = 15
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -3650,7 +3650,7 @@ NoNewHeadsThreshold = '6m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 100
 RPCBlockQueryDelay = 15
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -3858,7 +3858,7 @@ NoNewHeadsThreshold = '40s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -4075,7 +4075,7 @@ NoNewHeadsThreshold = '3m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -4179,7 +4179,7 @@ NoNewHeadsThreshold = '3m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -4283,7 +4283,7 @@ NoNewHeadsThreshold = '1m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -4391,7 +4391,7 @@ NoNewHeadsThreshold = '1m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -5024,7 +5024,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '40s'
 
 [Transactions]
@@ -5128,7 +5128,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '40s'
 
 [Transactions]
@@ -5445,7 +5445,7 @@ NoNewHeadsThreshold = '40s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '0s'
 
 [Transactions]
@@ -5974,7 +5974,7 @@ NoNewHeadsThreshold = '3m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '2m0s'
 
 [Transactions]
@@ -6405,7 +6405,7 @@ NoNewHeadsThreshold = '1m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '1m0s'
 
 [Transactions]
@@ -6509,7 +6509,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 2
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '1m0s'
 
 [Transactions]
@@ -6613,7 +6613,7 @@ NoNewHeadsThreshold = '30s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 2
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '1m0s'
 
 [Transactions]
@@ -6717,7 +6717,7 @@ NoNewHeadsThreshold = '1m0s'
 LogBroadcasterEnabled = true
 RPCDefaultBatchSize = 250
 RPCBlockQueryDelay = 1
-FinalizedBlockOffset = 0
+FinalizedBlockOffset = 2
 NoNewFinalizedHeadsThreshold = '1m0s'
 
 [Transactions]
