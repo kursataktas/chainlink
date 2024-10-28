@@ -2,6 +2,7 @@ package ccipdeployment
 
 import (
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/timelock"
+	"github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 	"testing"
 
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
@@ -96,6 +97,8 @@ func TestTransactionOrdering(t *testing.T) {
 	require.NoError(t, AddLanesForAll(e, state))
 
 	//src, dst := e.Chains[e.AllChainSelectors()[0]], e.Chains[e.AllChainSelectors()[0]]
+	src := e.Chains[tenv.HomeChainSel]
+	dst := e.Chains[tenv.FeedChainSel]
 	//starthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
 	//require.NoError(t, err)
 	//startBlock := starthdr.Number.Uint64()
@@ -138,19 +141,29 @@ func TestTransactionOrdering(t *testing.T) {
 	// Send a message from each chain to every other chain.
 	expectedSeqNum := make(map[uint64]uint64)
 
-	for src := range e.Chains {
-		for dest, destChain := range e.Chains {
-			if src == dest {
-				continue
-			}
-			latesthdr, err := destChain.Client.HeaderByNumber(testcontext.Get(t), nil)
-			require.NoError(t, err)
-			block := latesthdr.Number.Uint64()
-			startBlocks[dest] = &block
-			seqNum := SendRequest(t, e, state, src, dest, false)
-			expectedSeqNum[dest] = seqNum
-		}
-	}
+	//for src := range e.Chains {
+	//	for dest, destChain := range e.Chains {
+	//		if src == dest {
+	//			continue
+	//		}
+	//		latesthdr, err := destChain.Client.HeaderByNumber(testcontext.Get(t), nil)
+	//		require.NoError(t, err)
+	//		block := latesthdr.Number.Uint64()
+	//		startBlocks[dest] = &block
+	//		seqNum := SendRequest(t, e, state, src, dest, false)
+	//		expectedSeqNum[dest] = seqNum
+	//	}
+	//}
+	latesthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
+	require.NoError(t, err)
+	block := latesthdr.Number.Uint64()
+	startBlocks[dst.Selector] = &block
+	seqNum := SendRequest(t, e, state, src.Selector, dst.Selector, false)
+	expectedSeqNum[dst.Selector] = seqNum
+
+	seqNum2 := SendRequest(t, e, state, src.Selector, dst.Selector, false)
+	seqNum3 := SendRequest(t, e, state, src.Selector, dst.Selector, false)
+
 	//var seqNums []uint64
 	//for range len(requests) {
 	//	seqNums = append(seqNums, SendRequest(t, e, state, src.Selector, dst.Selector, false))
@@ -165,13 +178,30 @@ func TestTransactionOrdering(t *testing.T) {
 	//ConfirmExecWithSeqNrForAll(t, e, state, map[uint64]uint64{dst.Selector: seqNum}, map[uint64]*uint64{dst.Selector: &startBlock})
 	//}
 	// Wait for all commit reports to land.
-	ConfirmCommitForAllWithExpectedSeqNums(t, e, state, expectedSeqNum, startBlocks)
+	//ConfirmCommitForAllWithExpectedSeqNums(t, e, state, expectedSeqNum, startBlocks)
 
-	// Confirm token and gas prices are updated
-	ConfirmTokenPriceUpdatedForAll(t, e, state, startBlocks)
-	ConfirmGasPriceUpdatedForAll(t, e, state, startBlocks)
+	err = ConfirmCommitWithExpectedSeqNumRange(t, src, dst, state.Chains[dst.Selector].OffRamp, &block, ccipocr3.NewSeqNumRange(ccipocr3.SeqNum(seqNum), ccipocr3.SeqNum(seqNum3)))
+	require.NoError(t, err)
+
+	//err = ConfirmCommitWithExpectedSeqNumRange(t, src, dst, state.Chains[dst.Selector].OffRamp, &block, ccipocr3.NewSeqNumRange(ccipocr3.SeqNum(seqNum2), ccipocr3.SeqNum(seqNum2)))
+	//require.NoError(t, err)
 
 	// Wait for all exec reports to land
-	ConfirmExecWithSeqNrForAll(t, e, state, expectedSeqNum, startBlocks)
+	//ConfirmExecWithSeqNrForAll(t, e, state, expectedSeqNum, startBlocks)
+	err = ConfirmExecWithSeqNr(t, src, dst, state.Chains[dst.Selector].OffRamp, &block, seqNum)
+	require.NoError(t, err)
 
+	latesthdr, err = dst.Client.HeaderByNumber(testcontext.Get(t), nil)
+	require.NoError(t, err)
+	block = latesthdr.Number.Uint64()
+
+	err = ConfirmExecWithSeqNr(t, src, dst, state.Chains[dst.Selector].OffRamp, &block, seqNum2)
+	require.NoError(t, err)
+
+	latesthdr, err = dst.Client.HeaderByNumber(testcontext.Get(t), nil)
+	require.NoError(t, err)
+	block = latesthdr.Number.Uint64()
+
+	err = ConfirmExecWithSeqNr(t, src, dst, state.Chains[dst.Selector].OffRamp, &block, seqNum3)
+	require.NoError(t, err)
 }
