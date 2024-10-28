@@ -87,7 +87,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@593fc5ea2fe65b0719b59f3c8a010084c047b19d
 
       - name: Find new or updated test packages
         id: find-tests
@@ -220,7 +220,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@24d4da7194815fb8eb5ae31d30f333fa1d36e3a6
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@593fc5ea2fe65b0719b59f3c8a010084c047b19d
 
       - name: Run tests with flakeguard
         shell: bash
@@ -269,8 +269,6 @@ jobs:
             echo "failed_tests_count=$FAILED_TESTS_COUNT" >> "$GITHUB_OUTPUT"
           else
             echo "No test results directory found."
-            echo "[]" > test_results/all_tests.json
-            echo "[]" > test_results/failed_tests.json
             echo "all_tests_count=0" >> "$GITHUB_OUTPUT"
             echo "failed_tests_count=0" >> "$GITHUB_OUTPUT"
           fi
@@ -281,6 +279,13 @@ jobs:
         run: |
           jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' test_results/failed_tests.json | column -t -s$'\t' > test_results/failed_tests_ascii.txt
           cat test_results/failed_tests_ascii.txt
+
+      - name: Create ASCII table with all test results
+        if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
+        shell: bash
+        run: |
+          jq -r '["TestPackage", "TestName", "PassRatio", "RunCount"], ["---------", "---------", "---------", "---------"], (.[] | [.TestPackage, .TestName, .PassRatio, .Runs]) | @tsv' test_results/all_tests.json | column -t -s$'\t' > test_results/all_tests_ascii.txt
+          cat test_results/all_tests_ascii.txt
 
       - name: Create GitHub Summary
         run: |
