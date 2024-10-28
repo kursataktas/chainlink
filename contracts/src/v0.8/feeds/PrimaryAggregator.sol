@@ -822,6 +822,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     return s_description;
   }
 
+  error RoundNotFound();
+
   /**
    * @notice details for the given aggregator round
    * @param roundId target aggregator round (NOT OCR round). Must fit in uint32
@@ -844,6 +846,11 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
     if (roundId > type(uint32).max) return (0, 0, 0, 0, 0);
     Transmission memory transmission = s_transmissions[uint32(roundId)];
+    if (transmission.locked && transmission.recordedTimestamp == block.timestamp) {
+      // If latest round is requested before it is unlocked, return with whatever behavior would happen if the round was not yet recorded.
+      revert RoundNotFound();
+    }
+
     return (roundId, transmission.answer, transmission.observationsTimestamp, transmission.recordedTimestamp, roundId);
   }
 
@@ -867,6 +874,11 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     uint32 latestAggregatorRoundId = s_hotVars.latestAggregatorRoundId;
 
     Transmission memory transmission = s_transmissions[latestAggregatorRoundId];
+
+    if (transmission.locked && transmission.recordedTimestamp == block.timestamp) {
+      transmission = s_transmissions[uint32(--roundId)];
+    }
+
     return (
       latestAggregatorRoundId,
       transmission.answer,
@@ -1458,13 +1470,33 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     return "PrimaryAggregator 1.0.0";
   }
 
+  error AggregatorNotAuthorized();
   /**
    *
    * Section: SiameseAggregatorBase
    *
    */
   function recordSiameseReport(Report memory report) public override {
-    // TODO: fill in with implementation from the doc
+    // TODO: update this after further design decisions
+    if (msg.sender != s_siameseAggregator) revert AggregatorNotAuthorized();
+
+    uint32 roundId = s_hotVars.latestAggregatorRoundId;
+    Transmission memory transmission = s_transmissions[roundId];
+
+    if (_duplicateReport(report, transmission)) {
+      return;
+    }
+
+    roundId = ++s_hotVars.latestAggregatorRoundId;
+
+    int192 reportAnswer = report.observations[report.observations.length / 2];
+
+    s_transmissions[roundId] = Transmission({
+      answer: reportAnswer,
+      observationsTimestamp: report.observationsTimestamp,
+      recordedTimestamp: uint32(block.timestamp),
+      locked: true
+    }); // Locked when coming through OEV path until at least the next block.
   }
 
   /**

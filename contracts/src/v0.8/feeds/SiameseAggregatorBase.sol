@@ -18,7 +18,7 @@ abstract contract SiameseAggregatorBase {
 
   mapping(uint32 /* aggregator round ID */ => Transmission) internal s_transmissions;
 
-  address private s_siameseAggregator;
+  address internal s_siameseAggregator;
 
   function recordSiameseReport(Report memory report) public virtual;
 
