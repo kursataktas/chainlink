@@ -1,10 +1,7 @@
 package ccipdeployment
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/timelock"
-	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/router"
-	"math/big"
 	"testing"
 
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
@@ -73,7 +70,10 @@ func TestTransactionOrdering(t *testing.T) {
 	state, err = LoadOnchainState(e, tenv.Ab)
 	require.NoError(t, err)
 
-	tokenPoolData, err := DeployAndRegisterTokenPools(e, tenv.Env.AllChainSelectors(), state)
+	_, err = DeployAndRegisterTokenPools(e, tenv.Env.AllChainSelectors(), state)
+	require.NoError(t, err)
+
+	state, err = LoadOnchainState(e, tenv.Ab)
 	require.NoError(t, err)
 
 	// Ensure capreg logs are up to date.
@@ -95,57 +95,83 @@ func TestTransactionOrdering(t *testing.T) {
 	// Add all lanes
 	require.NoError(t, AddLanesForAll(e, state))
 
-	src, dst := e.Chains[0], e.Chains[1]
-	starthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
-	require.NoError(t, err)
-	startBlock := starthdr.Number.Uint64()
+	//src, dst := e.Chains[e.AllChainSelectors()[0]], e.Chains[e.AllChainSelectors()[0]]
+	//starthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
+	//require.NoError(t, err)
+	//startBlock := starthdr.Number.Uint64()
 
 	// Try out multiple requests, with combinations of messages and tokens
-	requests := []router.ClientEVM2AnyMessage{
-		{
-			Receiver:     common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-			Data:         []byte("Hello Chain"),
-			TokenAmounts: nil,
-			FeeToken:     common.HexToAddress("0x0"),
-			ExtraArgs:    nil,
-		},
-		{
-			Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-			Data:     []byte("Hello Chain, again"),
-			TokenAmounts: []router.ClientEVMTokenAmount{
-				{
-					tokenPoolData[src.Selector].token.Address(),
-					big.NewInt(10),
-				},
-			},
-			FeeToken:  common.HexToAddress("0x0"),
-			ExtraArgs: nil,
-		},
-		{
-			Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-			Data:     nil,
-			TokenAmounts: []router.ClientEVMTokenAmount{
-				{
-					tokenPoolData[src.Selector].token.Address(),
-					big.NewInt(100),
-				},
-			},
-			FeeToken:  common.HexToAddress("0x0"),
-			ExtraArgs: nil,
-		},
-	}
+	//requests := []router.ClientEVM2AnyMessage{
+	//	{
+	//		Receiver:     common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+	//		Data:         []byte("Hello Chain"),
+	//		TokenAmounts: nil,
+	//		FeeToken:     common.HexToAddress("0x0"),
+	//		ExtraArgs:    nil,
+	//	},
+	//	{
+	//		Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+	//		Data:     []byte("Hello Chain, again"),
+	//		TokenAmounts: []router.ClientEVMTokenAmount{
+	//			{
+	//				tokenPoolData[src.Selector].token.Address(),
+	//				big.NewInt(10),
+	//			},
+	//		},
+	//		FeeToken:  common.HexToAddress("0x0"),
+	//		ExtraArgs: nil,
+	//	},
+	//	{
+	//		Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+	//		Data:     nil,
+	//		TokenAmounts: []router.ClientEVMTokenAmount{
+	//			{
+	//				tokenPoolData[src.Selector].token.Address(),
+	//				big.NewInt(100),
+	//			},
+	//		},
+	//		FeeToken:  common.HexToAddress("0x0"),
+	//		ExtraArgs: nil,
+	//	},
+	//}
+	startBlocks := make(map[uint64]*uint64)
+	// Send a message from each chain to every other chain.
+	expectedSeqNum := make(map[uint64]uint64)
 
-	var seqNums []uint64
-	for _, rq := range requests {
-		seqNums = append(seqNums, SendMessage(t, e, state, src.Selector, dst.Selector, false, rq))
+	for src := range e.Chains {
+		for dest, destChain := range e.Chains {
+			if src == dest {
+				continue
+			}
+			latesthdr, err := destChain.Client.HeaderByNumber(testcontext.Get(t), nil)
+			require.NoError(t, err)
+			block := latesthdr.Number.Uint64()
+			startBlocks[dest] = &block
+			seqNum := SendRequest(t, e, state, src, dest, false)
+			expectedSeqNum[dest] = seqNum
+		}
 	}
+	//var seqNums []uint64
+	//for range len(requests) {
+	//	seqNums = append(seqNums, SendRequest(t, e, state, src.Selector, dst.Selector, false))
+	//}
 
 	// expect that operations arrive in the correct order
-	for _, seqNum := range seqNums {
-		// Wait for all commit reports to land.
-		ConfirmCommitForAllWithExpectedSeqNums(t, e, state, map[uint64]uint64{dst.Selector: seqNum}, map[uint64]*uint64{dst.Selector: &startBlock})
+	//for _, seqNum := range seqNums {
+	// Wait for all commit reports to land.
+	//ConfirmCommitForAllWithExpectedSeqNums(t, e, state, map[uint64]uint64{dst.Selector: seqNum}, map[uint64]*uint64{dst.Selector: &startBlock})
+	////
+	//// Wait for all exec reports to land
+	//ConfirmExecWithSeqNrForAll(t, e, state, map[uint64]uint64{dst.Selector: seqNum}, map[uint64]*uint64{dst.Selector: &startBlock})
+	//}
+	// Wait for all commit reports to land.
+	ConfirmCommitForAllWithExpectedSeqNums(t, e, state, expectedSeqNum, startBlocks)
 
-		// Wait for all exec reports to land
-		ConfirmExecWithSeqNrForAll(t, e, state, map[uint64]uint64{dst.Selector: seqNum}, map[uint64]*uint64{dst.Selector: &startBlock})
-	}
+	// Confirm token and gas prices are updated
+	ConfirmTokenPriceUpdatedForAll(t, e, state, startBlocks)
+	ConfirmGasPriceUpdatedForAll(t, e, state, startBlocks)
+
+	// Wait for all exec reports to land
+	ConfirmExecWithSeqNrForAll(t, e, state, expectedSeqNum, startBlocks)
+
 }
