@@ -46,6 +46,11 @@ func (d *Delegate) ServicesForSpec(ctx context.Context, spec job.Job) ([]job.Ser
 		return nil, err
 	}
 
+	config, err := spec.WorkflowSpec.GetConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := Config{
 		Lggr:          d.logger,
 		Workflow:      sdkSpec,
@@ -54,7 +59,7 @@ func (d *Delegate) ServicesForSpec(ctx context.Context, spec job.Job) ([]job.Ser
 		WorkflowName:  spec.WorkflowSpec.WorkflowName,
 		Registry:      d.registry,
 		Store:         d.store,
-		Config:        []byte(spec.WorkflowSpec.Config),
+		Config:        config,
 		Binary:        binary,
 	}
 	engine, err := NewEngine(cfg)

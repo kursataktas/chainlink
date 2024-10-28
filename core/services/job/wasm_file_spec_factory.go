@@ -13,7 +13,6 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/workflows/sdk"
 	"github.com/smartcontractkit/chainlink-common/pkg/workflows/wasm/host"
-	"gopkg.in/yaml.v3"
 
 	"github.com/andybalholm/brotli"
 
@@ -22,10 +21,8 @@ import (
 
 type WasmFileSpecFactory struct{}
 
-func (w WasmFileSpecFactory) Spec(_ context.Context, workflow, configLocation string) (sdk.WorkflowSpec, []byte, string, error) {
-	config, err := yaml.Marshal(map[string]interface{}{
-		"foo": "bar",
-	})
+func (w WasmFileSpecFactory) Spec(ctx context.Context, workflow, configLocation string) (sdk.WorkflowSpec, []byte, string, error) {
+	config, err := w.Config(ctx, configLocation)
 	if err != nil {
 		return sdk.WorkflowSpec{}, nil, "", err
 	}
@@ -46,14 +43,23 @@ func (w WasmFileSpecFactory) Spec(_ context.Context, workflow, configLocation st
 	return *spec, compressedBinary, sha, nil
 }
 
-func (w WasmFileSpecFactory) RawSpec(_ context.Context, workflow, configLocation string) ([]byte, error) {
-	config, err := os.ReadFile(configLocation)
+func (w WasmFileSpecFactory) RawSpec(ctx context.Context, workflow, configLocation string) ([]byte, error) {
+	config, err := w.Config(ctx, configLocation)
 	if err != nil {
 		return nil, err
 	}
 
 	raw, _, err := w.rawSpecAndSha(workflow, config)
 	return raw, err
+}
+
+func (w WasmFileSpecFactory) Config(_ context.Context, configLocation string) ([]byte, error) {
+	config, err := os.ReadFile(configLocation)
+	if err != nil {
+		return nil, err
+	}
+
+	return config, nil
 }
 
 // rawSpecAndSha returns the brotli compressed version of the raw wasm file, alongside the sha256 hash of the raw wasm file
