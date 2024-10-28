@@ -9,7 +9,6 @@ OCR.ContractConfirmations = 1
 
 [GasEstimator]
 EIP1559DynamicFees = true
-PriceDefault = '5 wei'
 PriceMax = '1000 gwei'
 PriceMin = '5 gwei'
 BumpMin = '2 gwei'
