@@ -182,9 +182,8 @@ jobs:
           prod: "true"
       - name: Setup Go
         uses: ./.github/actions/setup-go
-      # TODO: uncomment   
-      # - name: Setup Solana
-      #   uses: ./.github/actions/setup-solana
+      - name: Setup Solana
+        uses: ./.github/actions/setup-solana
       - name: Setup wasmd
         uses: ./.github/actions/setup-wasmd
       - name: Setup Postgres
@@ -213,25 +212,8 @@ jobs:
           pushd $(go list -m -f "{{.Dir}}" github.com/smartcontractkit/chainlink-starknet/relayer)
           go install ./pkg/chainlink/cmd/chainlink-starknet
           popd
-
-      # - name: Setup Go
-      #   uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
-      #   with:
-      #     check-latest: true        
-      # - name: Setup test database
-      #   shell: sh
-      #   run: make setup-testdb
-      # - name: Source database environment variables
-      #   run: source .dbenv
-
       - name: Clean test cache
         run: go clean -testcache
-
-      # - name: Set up Go 1.21.9
-      #   uses: actions/setup-go@v3
-      #   with:
-      #     go-version: '1.21.9'        
-
       - name: Generate random id
         id: gen_id
         run: echo "id=$(uuidgen)" >> "$GITHUB_OUTPUT"
