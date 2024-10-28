@@ -57,7 +57,7 @@ on:
     secrets:
       SLACK_BOT_TOKEN:
         required: false
-      GITHUB_TOKEN:
+      GH_TOKEN:
         required: true  
 
 env:
@@ -273,13 +273,6 @@ jobs:
             echo "all_tests_count=0" >> "$GITHUB_OUTPUT"
             echo "failed_tests_count=0" >> "$GITHUB_OUTPUT"
           fi
-      
-      - name: Upload failed test results as artifact
-        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
-        uses: actions/upload-artifact@v4.4.3
-        with:
-          name: failed_tests.json
-          path: test_results/failed_tests.json
 
       - name: Create ASCII table with failed test results
         if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
@@ -334,15 +327,22 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "See all logs for [failed tests](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts)" >> $GITHUB_STEP_SUMMARY
         
+      - name: Upload Failed Test Results as Artifact
+        if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: failed_tests.json
+          path: test_results/failed_tests.json
+
       - name: Append Link to Failed Test Results Artifact
         if: ${{ fromJson(steps.set_test_results.outputs.failed_tests_count) > 0 }}
         run: |
           ARTIFACTS_URL="https://api.github.com/repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts"
-          ARTIFACTS_JSON=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $ARTIFACTS_URL)
+          ARTIFACTS_JSON=$(curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" $ARTIFACTS_URL)
           FAILED_TESTS_URL=$(echo $ARTIFACTS_JSON | jq -r '.artifacts[] | select(.name=="failed_tests.json") | .archive_download_url')
           echo "See all logs for failed tests: [failed_tests.json]($FAILED_TESTS_URL)" >> $GITHUB_STEP_SUMMARY
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}          
 
       - name: Append Success Note if All Tests Passed
         if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 && fromJson(steps.set_test_results.outputs.failed_tests_count) == 0 }}
