@@ -900,7 +900,6 @@ func (o *OCRSoakTest) observeOCREventsPolling(endTest <-chan time.Time) error {
 	startingBlockNum := o.startingBlockNum
 	// Initialized to an invalid block number (max value of uint64)
 	lastCheckedBlockNum := ^uint64(0)
-	o.log.Info().Msg("Just a marker")
 	// Polling interval can be customized in the test config, defaulting to 30 seconds
 	pollInterval := time.Second * 30
 	ticker := time.NewTicker(pollInterval)
@@ -935,7 +934,7 @@ func (o *OCRSoakTest) observeOCREventsPolling(endTest <-chan time.Time) error {
 				o.filterQuery.FromBlock = big.NewInt(0).SetUint64(startingBlockNum)
 				o.filterQuery.ToBlock = big.NewInt(0).SetUint64(latestBlock)
 
-				o.log.Debug().
+				o.log.Info().
 					Uint64("From Block", startingBlockNum).
 					Uint64("To Block", latestBlock).
 					Msg("Fetching logs for the specified range")
