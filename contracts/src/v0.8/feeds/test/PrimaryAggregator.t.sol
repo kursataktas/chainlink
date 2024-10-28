@@ -592,7 +592,8 @@ contract Description is TransmittedPrimaryAggregatorBaseTest {
 }
 contract GetRoundData is TransmittedPrimaryAggregatorBaseTest {
   function test_ReturnsCorrectRoundData() public view {
-    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator.getRoundData(1);
+    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator
+      .getRoundData(1);
 
     assertEq(roundId, 1);
     assertEq(answer, 1);
@@ -603,7 +604,8 @@ contract GetRoundData is TransmittedPrimaryAggregatorBaseTest {
 }
 contract LatestRoundData is TransmittedPrimaryAggregatorBaseTest {
   function test_ReturnsLatestRoundData() public view {
-    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator.latestRoundData();
+    (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound) = aggregator
+      .latestRoundData();
 
     assertEq(roundId, 1);
     assertEq(answer, 1);
