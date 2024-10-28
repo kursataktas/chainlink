@@ -69,4 +69,3 @@ jobs:
       slack_notification_after_tests_name: ${{ inputs.slack_notification_after_tests_name }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
