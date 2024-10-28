@@ -27,7 +27,7 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
   error DuplicateOnchainPublicKey();
   error InvalidSignature();
   error InvalidSignerOrder();
-  error MinSignersTooHigh();
+  error NotEnoughSigners();
   error NotCursed(bytes16 subject);
   error OutOfOrderSignatures();
   error ThresholdNotMet();
@@ -40,27 +40,26 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
 
   /// @dev the configuration of an RMN signer
   struct Signer {
-    address onchainPublicKey; // ────╮ For signing reports
-    uint64 nodeIndex; // ────────────╯ Maps to nodes in home chain config, should be strictly increasing
+    address onchainPublicKey; // ─╮ For signing reports.
+    uint64 nodeIndex; // ─────────╯ Maps to nodes in home chain config, should be strictly increasing.
   }
 
   /// @dev the contract config
-  /// @dev note: minSigners can be set to 0 to disable verification for chains without RMN support
   struct Config {
-    bytes32 rmnHomeContractConfigDigest; // Digest of the RMNHome contract config
-    Signer[] signers; // List of signers
-    uint64 minSigners; // Threshold for the number of signers required to verify a report
+    bytes32 rmnHomeContractConfigDigest; // Digest of the RMNHome contract config.
+    Signer[] signers; // List of signers.
+    uint64 f; // Max number of faulty RMN nodes; f+1 signers are required to verify a report, must configure 2f+1 signers in total
   }
 
   /// @dev part of the payload that RMN nodes sign: keccak256(abi.encode(RMN_V1_6_ANY2EVM_REPORT, report))
   /// @dev this struct is only ever abi-encoded and hashed; it is never stored
   struct Report {
-    uint256 destChainId; //                     To guard against chain selector misconfiguration
-    uint64 destChainSelector; //  ────────────╮ The chain selector of the destination chain
-    address rmnRemoteContractAddress; // ─────╯ The address of this contract
-    address offrampAddress; //                  The address of the offramp on the same chain as this contract
-    bytes32 rmnHomeContractConfigDigest; //     The digest of the RMNHome contract config
-    Internal.MerkleRoot[] merkleRoots; //   The dest lane updates
+    uint256 destChainId; //                 To guard against chain selector misconfiguration.
+    uint64 destChainSelector; //  ────────╮ The chain selector of the destination chain.
+    address rmnRemoteContractAddress; // ─╯ The address of this contract.
+    address offrampAddress; //              The address of the offramp on the same chain as this contract.
+    bytes32 rmnHomeContractConfigDigest; // The digest of the RMNHome contract config.
+    Internal.MerkleRoot[] merkleRoots; //   The dest lane updates.
   }
 
   /// @dev this is included in the preimage of the digest that RMN nodes sign
@@ -97,7 +96,7 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
     if (s_configCount == 0) {
       revert ConfigNotSet();
     }
-    if (signatures.length < s_config.minSigners) revert ThresholdNotMet();
+    if (signatures.length < s_config.f + 1) revert ThresholdNotMet();
 
     bytes32 digest = keccak256(
       abi.encode(
@@ -142,9 +141,9 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
       }
     }
 
-    // minSigners is tenable
-    if (!(newConfig.minSigners <= newConfig.signers.length)) {
-      revert MinSignersTooHigh();
+    // min signers requirement is tenable
+    if (newConfig.signers.length < 2 * newConfig.f + 1) {
+      revert NotEnoughSigners();
     }
 
     // clear the old signers
@@ -243,6 +242,8 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
 
   /// @inheritdoc IRMNRemote
   function isCursed() external view returns (bool) {
+    // There are zero curses under normal circumstances, which means it's cheaper to check for the absence of curses.
+    // than to check the subject list twice, as we have to check for both the legacy and global curse subjects.
     if (s_cursedSubjects.length() == 0) {
       return false;
     }
@@ -253,6 +254,8 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
   function isCursed(
     bytes16 subject
   ) external view returns (bool) {
+    // There are zero curses under normal circumstances, which means it's cheaper to check for the absence of curses.
+    // than to check the subject list twice, as we have to check for both the given and global curse subjects.
     if (s_cursedSubjects.length() == 0) {
       return false;
     }
