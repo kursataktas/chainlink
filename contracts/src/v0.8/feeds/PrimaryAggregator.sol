@@ -875,8 +875,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
     Transmission memory transmission = s_transmissions[latestAggregatorRoundId];
 
+    // TODO: update this based on design modifications
     if (transmission.locked && transmission.recordedTimestamp == block.timestamp) {
-      transmission = s_transmissions[uint32(--roundId)];
+      transmission = s_transmissions[--latestAggregatorRoundId];
     }
 
     return (
@@ -1496,7 +1497,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
       observationsTimestamp: report.observationsTimestamp,
       recordedTimestamp: uint32(block.timestamp),
       locked: true
-    }); // Locked when coming through OEV path until at least the next block.
+    }); // Locked when coming through secondary path until at least the next block.
   }
 
   /**
