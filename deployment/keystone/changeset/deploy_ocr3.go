@@ -22,7 +22,7 @@ func DeployOCR3(lggr logger.Logger, env deployment.Environment, ab deployment.Ad
 }
 
 func ConfigureOCR3Contract(lggr logger.Logger, env deployment.Environment, ab deployment.AddressBook, registryChainSel uint64, nodes []string, cfg kslib.OracleConfigWithSecrets) (deployment.ChangesetOutput, error) {
-	err := kslib.ConfigureOCR3ContractFromCLO(&env, registryChainSel, nodes, ab, &cfg)
+	err := kslib.ConfigureOCR3ContractFromJD(&env, registryChainSel, nodes, ab, &cfg)
 	if err != nil {
 		return deployment.ChangesetOutput{}, fmt.Errorf("failed to configure OCR3Capability: %w", err)
 	}

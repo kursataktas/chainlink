@@ -411,7 +411,7 @@ func ConfigureOCR3Contract(env *deployment.Environment, chainSel uint64, dons []
 	return nil
 }
 
-func ConfigureOCR3ContractFromCLO(env *deployment.Environment, chainSel uint64, nodes []string, addrBook deployment.AddressBook, cfg *OracleConfigWithSecrets) error {
+func ConfigureOCR3ContractFromJD(env *deployment.Environment, chainSel uint64, nodeIDs []string, addrBook deployment.AddressBook, cfg *OracleConfigWithSecrets) error {
 	registryChain, ok := env.Chains[chainSel]
 	if !ok {
 		return fmt.Errorf("chain %d not found in environment", chainSel)
