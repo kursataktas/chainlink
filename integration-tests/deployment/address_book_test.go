@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -117,4 +118,98 @@ func TestAddressBook_Merge(t *testing.T) {
 			addr1: onRamp110,
 		},
 	})
+}
+
+func TestAddressBookMap_Diff(t *testing.T) {
+	addr1 := common.HexToAddress("0x1").String()
+	addr2 := common.HexToAddress("0x2").String()
+	type fields struct {
+		AddressesByChain map[uint64]map[string]TypeAndVersion
+	}
+	type args struct {
+		other AddressBook
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    AddressBook
+		wantErr bool
+	}{
+		{
+			name: "exact no diff",
+			fields: fields{
+				AddressesByChain: map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+					},
+				},
+			},
+			args: args{
+				other: NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+					},
+				}),
+			},
+			want: NewMemoryAddressBook(),
+		},
+		{
+			name: "subset no diff",
+			fields: fields{
+				AddressesByChain: map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+						addr2: NewTypeAndVersion("ExistingContract", Version1_0_0),
+					},
+				},
+			},
+			args: args{
+				other: NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+					},
+				}),
+			},
+			want: NewMemoryAddressBook(),
+		},
+		{
+			name: "superset diff",
+			fields: fields{
+				AddressesByChain: map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+					},
+				},
+			},
+			args: args{
+				other: NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
+					chainsel.TEST_90000001.Selector: {
+						addr1: NewTypeAndVersion("OnRamp", Version1_0_0),
+						addr2: NewTypeAndVersion("NewContract", Version1_0_0),
+					},
+				}),
+			},
+			want: NewMemoryAddressBookFromMap(map[uint64]map[string]TypeAndVersion{
+				chainsel.TEST_90000001.Selector: {
+					addr2: NewTypeAndVersion("NewContract", Version1_0_0),
+				},
+			}),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &AddressBookMap{
+				AddressesByChain: tt.fields.AddressesByChain,
+			}
+			got, err := m.Diff(tt.args.other)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddressBookMap.Diff() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AddressBookMap.Diff() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

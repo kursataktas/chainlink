@@ -82,6 +82,9 @@ type AddressBook interface {
 	AddressesForChain(chain uint64) (map[string]TypeAndVersion, error)
 	// Allows for merging address books (e.g. new deployments with existing ones)
 	Merge(other AddressBook) error
+	// Diff will return a new address book with the addresses that are in the other address book but not in this one.
+	// NOTE: this means that if 'other' is a subset of this address book, the diff will be empty.
+	Diff(other AddressBook) (AddressBook, error)
 }
 
 type AddressBookMap struct {
@@ -147,6 +150,31 @@ func (m *AddressBookMap) Merge(ab AddressBook) error {
 		}
 	}
 	return nil
+}
+
+// Diff will return a new address book with the addresses that are in the other address book but not in this one.
+// NOTE: this means that if 'other' is a subset of this address book, the diff will be empty.
+func (m *AddressBookMap) Diff(other AddressBook) (AddressBook, error) {
+	diff := NewMemoryAddressBook()
+	otherAddrs, err := other.Addresses()
+	if err != nil {
+		return diff, fmt.Errorf("failed to get addresses from other address book: %w", err)
+	}
+	for chain, chainAddresses := range otherAddrs {
+		ourAddrs, err := m.AddressesForChain(chain)
+		if err != nil && !errors.Is(err, ErrChainNotFound) {
+			return diff, fmt.Errorf("failed to get addresses for chain %d: %w", chain, err)
+		}
+		for otherAddr, typeAndVersions := range chainAddresses {
+			_, exists := ourAddrs[otherAddr]
+			if !exists {
+				if err := diff.Save(chain, otherAddr, typeAndVersions); err != nil {
+					return diff, fmt.Errorf("failed to save address %s for chain %d: %w", otherAddr, chain, err)
+				}
+			}
+		}
+	}
+	return diff, nil
 }
 
 // TODO: Maybe could add an environment argument
