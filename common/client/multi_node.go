@@ -13,6 +13,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-common/pkg/services"
+
 	"github.com/smartcontractkit/chainlink/v2/common/types"
 )
 
@@ -226,7 +227,7 @@ func (c *MultiNode[CHAIN_ID, RPC]) selectNode() (node Node[CHAIN_ID, RPC], err e
 
 	var prevNodeName string
 	if c.activeNode != nil {
-		prevNodeName = c.activeNode.Name()
+		prevNodeName = c.activeNode.String()
 		c.activeNode.UnsubscribeAllExceptAliveLoop()
 	}
 	c.activeNode = c.nodeSelector.Select()
@@ -237,7 +238,7 @@ func (c *MultiNode[CHAIN_ID, RPC]) selectNode() (node Node[CHAIN_ID, RPC], err e
 		return nil, ErroringNodeError
 	}
 
-	c.lggr.Debugw("Switched to a new active node due to prev node heath issues", "prevNode", prevNodeName, "newNode", c.activeNode.Name())
+	c.lggr.Debugw("Switched to a new active node due to prev node heath issues", "prevNode", prevNodeName, "newNode", c.activeNode.String())
 	return c.activeNode, err
 }
 
