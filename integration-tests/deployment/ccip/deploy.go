@@ -2,6 +2,8 @@ package ccipdeployment
 
 import (
 	"fmt"
+	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/registry_module_owner_custom"
+	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/token_pool_1_4_0"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -21,6 +23,7 @@ import (
 	"github.com/smartcontractkit/chainlink/integration-tests/deployment"
 
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/ccip_home"
+	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/lock_release_token_pool"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/maybe_revert_message_receiver"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/nonce_manager"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/offramp"
@@ -56,6 +59,7 @@ var (
 	OffRamp                    deployment.ContractType = "OffRamp"
 	CapabilitiesRegistry       deployment.ContractType = "CapabilitiesRegistry"
 	PriceFeed                  deployment.ContractType = "PriceFeed"
+	RegistryModule             deployment.ContractType = "RegistryModule"
 	// Note test router maps to a regular router contract.
 	TestRouter   deployment.ContractType = "TestRouter"
 	CCIPReceiver deployment.ContractType = "CCIPReceiver"
@@ -70,6 +74,7 @@ type Contracts interface {
 		*fee_quoter.FeeQuoter |
 		*router.Router |
 		*token_admin_registry.TokenAdminRegistry |
+		*registry_module_owner_custom.RegistryModuleOwnerCustom |
 		*weth9.WETH9 |
 		*rmn_remote.RMNRemote |
 		*owner_helpers.ManyChainMultiSig |
@@ -78,7 +83,8 @@ type Contracts interface {
 		*onramp.OnRamp |
 		*burn_mint_erc677.BurnMintERC677 |
 		*maybe_revert_message_receiver.MaybeRevertMessageReceiver |
-		*aggregator_v3_interface.AggregatorV3Interface
+		*aggregator_v3_interface.AggregatorV3Interface |
+		*token_pool_1_4_0.TokenPool
 }
 
 type ContractDeploy[C Contracts] struct {
@@ -551,6 +557,29 @@ func DeployChainContracts(
 	}
 	e.Logger.Infow("deployed tokenAdminRegistry", "addr", tokenAdminRegistry)
 
+	customRegistryModule, err := deployContract(e.Logger, chain, ab,
+		func(chain deployment.Chain) ContractDeploy[*registry_module_owner_custom.RegistryModuleOwnerCustom] {
+			regModAddr, tx2, regMod, err2 := registry_module_owner_custom.DeployRegistryModuleOwnerCustom(
+				chain.DeployerKey,
+				chain.Client,
+				tokenAdminRegistry.Address)
+			return ContractDeploy[*registry_module_owner_custom.RegistryModuleOwnerCustom]{
+				regModAddr, regMod, tx2, deployment.NewTypeAndVersion(RegistryModule, deployment.Version1_5_0), err2,
+			}
+		})
+	if err != nil {
+		e.Logger.Errorw("Failed to deploy custom registry module", "err", err)
+		return err
+	}
+	e.Logger.Infow("deployed custom registry module", "addr", tokenAdminRegistry)
+
+	tx, err = tokenAdminRegistry.Contract.AddRegistryModule(chain.DeployerKey, customRegistryModule.Address)
+	if err != nil {
+		e.Logger.Errorw("Failed to assign registry module on token admin registry", "err", err)
+		return err
+	}
+	e.Logger.Infow("assigned registry module on token admin registry")
+
 	nonceManager, err := deployContract(e.Logger, chain, ab,
 		func(chain deployment.Chain) ContractDeploy[*nonce_manager.NonceManager] {
 			nonceManagerAddr, tx2, nonceManager, err2 := nonce_manager.DeployNonceManager(
@@ -677,4 +706,108 @@ func DeployChainContracts(
 		return err
 	}
 	return nil
+}
+
+func initializeTokenPool(e deployment.Environment,
+	selector uint64,
+	state CCIPOnChainState) (*burn_mint_erc677.BurnMintERC677, *lock_release_token_pool.LockReleaseTokenPool, error) {
+
+	tokenAddr, txn, token, err := burn_mint_erc677.DeployBurnMintERC677(
+		e.Chains[selector].DeployerKey,
+		e.Chains[selector].Client,
+		"TEST_TOKEN",
+		"TST",
+		8,
+		big.NewInt(99999999),
+	)
+	if err != nil {
+		e.Logger.Errorf("Failed to deploy test token on chain %s", err)
+		return token, nil, err
+	}
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to deploy token", "err", err)
+		return token, nil, err
+	}
+
+	poolAddr, txn, pool, err := lock_release_token_pool.DeployLockReleaseTokenPool(
+		e.Chains[selector].DeployerKey,
+		e.Chains[selector].Client,
+		tokenAddr,
+		nil,
+		state.Chains[selector].RMNProxy.Address(),
+		false,
+		state.Chains[selector].Router.Address(),
+	)
+
+	txn, err = token.GrantMintAndBurnRoles(e.Chains[selector].DeployerKey, e.Chains[selector].DeployerKey.From)
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to mint tokens to deployer key", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = token.GrantMintAndBurnRoles(e.Chains[selector].DeployerKey, poolAddr)
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to mint tokens to token pool", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = token.Mint(e.Chains[selector].DeployerKey, e.Chains[selector].DeployerKey.From, big.NewInt(100000))
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to mint tokens to deployer key", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = token.Mint(e.Chains[selector].DeployerKey, poolAddr, big.NewInt(100000))
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to mint tokens to pool", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = state.Chains[selector].RegistryModule.RegisterAdminViaOwner(e.Chains[selector].DeployerKey, tokenAddr)
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to register token with registry module", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = state.Chains[selector].TokenAdminRegistry.AcceptAdminRole(e.Chains[selector].DeployerKey, tokenAddr)
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to accept token administratorship", "err", err)
+		return token, pool, err
+	}
+
+	isAdmin, err := state.Chains[selector].TokenAdminRegistry.IsAdministrator(nil, tokenAddr, e.Chains[selector].DeployerKey.From)
+	if err != nil || !isAdmin {
+		e.Logger.Errorw("Failed to accept token administratorship", "err", err)
+		return token, pool, err
+	}
+
+	txn, err = state.Chains[selector].TokenAdminRegistry.SetPool(e.Chains[selector].DeployerKey, tokenAddr, poolAddr)
+	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
+		e.Logger.Errorw("Failed to set pool of the test token", "err", err)
+		return token, pool, err
+	}
+
+	return token, pool, err
+}
+
+type registeredPools struct {
+	token *burn_mint_erc677.BurnMintERC677
+	pool  *lock_release_token_pool.LockReleaseTokenPool
+}
+
+func DeployAndRegisterTokenPools(e deployment.Environment, selectors []uint64, state CCIPOnChainState) (map[uint64]registeredPools, error) {
+
+	ret := map[uint64]registeredPools{}
+	for _, selector := range selectors {
+		token, pool, err := initializeTokenPool(e, selector, state)
+		if err != nil {
+			return ret, err
+		}
+		ret[selector] = registeredPools{
+			token: token,
+			pool:  pool,
+		}
+	}
+
+	return ret, nil
 }

@@ -204,18 +204,22 @@ func SendRequest(t *testing.T, e deployment.Environment, state CCIPOnChainState,
 		FeeToken:  common.HexToAddress("0x0"),
 		ExtraArgs: nil, // TODO: no extra args for now, falls back to default
 	}
-	router := state.Chains[src].Router
+	return SendMessage(t, e, state, src, dest, testRouter, msg)
+}
+
+func SendMessage(t *testing.T, e deployment.Environment, state CCIPOnChainState, src, dest uint64, testRouter bool, msg router.ClientEVM2AnyMessage) uint64 {
+	r := state.Chains[src].Router
 	if testRouter {
-		router = state.Chains[src].TestRouter
+		r = state.Chains[src].TestRouter
 	}
-	fee, err := router.GetFee(
+	fee, err := r.GetFee(
 		&bind.CallOpts{Context: context.Background()}, dest, msg)
 	require.NoError(t, err, deployment.MaybeDataErr(err))
 
 	t.Logf("Sending CCIP request from chain selector %d to chain selector %d",
 		src, dest)
 	e.Chains[src].DeployerKey.Value = fee
-	tx, err := router.CcipSend(
+	tx, err := r.CcipSend(
 		e.Chains[src].DeployerKey,
 		dest,
 		msg)
