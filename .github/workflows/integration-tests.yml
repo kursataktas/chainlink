@@ -171,11 +171,7 @@ jobs:
         image-type: [amd64, arm64, plugins-amd64, plugins-arm64]
     needs: [changes]
     if: github.event_name == 'pull_request' && ( needs.changes.outputs.core_changes == 'true' || needs.changes.outputs.github_ci_changes == 'true')
-<<<<<<< HEAD
     uses: smartcontractkit/.github/.github/workflows/run-e2e-tests.yml@streamlineChainlinkImageBuilds # DEBUG: Unmerged changes
-=======
-    uses: smartcontractkit/.github/.github/workflows/run-e2e-tests.yml@ca50645120f0f07ed8c0df08175a5d6b3e4ac454 #ctf-run-tests@0.1.2
->>>>>>> dabb9229eef55b76220aa84227d7910fa83b45c7
     with:
       workflow_name: Core E2E Tests ${{ matrix.image-type }}
       test_chainlink_image_type: ${{ matrix.image-type }}
