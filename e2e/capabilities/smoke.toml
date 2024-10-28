@@ -21,6 +21,7 @@
       pull_image = true
 
     [nodeset.node_specs.node]
-      capabilities = ["./ctf", "./ctf2"]
+#      path to your binaries
+#      capabilities = ["./ctf", "./ctf2"]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
       pull_image = true
