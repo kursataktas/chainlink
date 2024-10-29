@@ -19,6 +19,7 @@ import (
 )
 
 func ExampleChainReaderService() {
+	ctx := context.Background()
 	abi := `[{"inputs": [],"stateMutability": "nonpayable","type": "constructor"},{"inputs": [{"internalType": "address","name": "token","type": "address"},{"internalType": "uint16","name": "quantity","type": "uint16"}],"name": "contractRead","outputs": [{"internalType": "uint160","name": "","type": "uint160"}],"stateMutability": "pure","type": "function"}]`
 	configJSON := fmt.Sprintf(`{
 		"contracts": {
@@ -43,8 +44,8 @@ func ExampleChainReaderService() {
 
 	client := new(clientmocks.Client)
 	poller := new(mocks.LogPoller)
-	reader, _ := evm.NewChainReaderService(context.Background(), logger.NewWithSync(io.Discard), poller, nil, client, config)
-	_ = reader.Start(context.Background())
+	reader, _ := evm.NewChainReaderService(ctx, logger.NewWithSync(io.Discard), poller, nil, client, config)
+	_ = reader.Start(ctx)
 
 	defer reader.Close()
 
@@ -68,11 +69,11 @@ func ExampleChainReaderService() {
 		Name:    "NamedContract",
 	}
 
-	_ = reader.Bind(context.Background(), []commontypes.BoundContract{binding})
+	_ = reader.Bind(ctx, []commontypes.BoundContract{binding})
 
 	identifier := binding.ReadIdentifier(readName)
 
 	var contractReadResult *big.Int // another chain agnostic type
 
-	_ = reader.GetLatestValue(context.Background(), identifier, primitives.Finalized, parameters, contractReadResult)
+	_ = reader.GetLatestValue(ctx, identifier, primitives.Finalized, parameters, contractReadResult)
 }
