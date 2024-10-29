@@ -3,7 +3,7 @@
 COMMIT_SHA ?= $(shell git rev-parse HEAD)
 VERSION = $(shell jq -r '.version' package.json)
 GO_LDFLAGS := $(shell tools/bin/ldflags)
-GOFLAGS = -ldflags "$(GO_LDFLAGS)" -tags dev
+GOFLAGS = -ldflags "$(GO_LDFLAGS)"
 
 .PHONY: install
 install: install-chainlink-autoinstall ## Install chainlink and all its dependencies.
