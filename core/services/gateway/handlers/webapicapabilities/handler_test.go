@@ -370,7 +370,7 @@ func TestHandlerRecieveMetadataMessageFromWorkflowNode(t *testing.T) {
 	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId"])
 	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId"].lastUpdatedAt)
 
-	require.Equal(t, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig, triggerConfigs)
+	require.Equal(t, triggerConfigs, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig)
 	require.Empty(t, handler.consensusConfig)
 	msg2 := &api.Message{
 		Body: api.MessageBody{
@@ -381,11 +381,18 @@ func TestHandlerRecieveMetadataMessageFromWorkflowNode(t *testing.T) {
 		},
 	}
 	err = handler.HandleNodeMessage(ctx, msg2, nodeAddr)
+	handler.updateTriggerConsensus()
 
-	require.Equal(t, handler.consensusConfig, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig)
+	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId2"])
+	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId2"].lastUpdatedAt)
 
-	// Other test cases:
-	// one node updated with different value, no change as no new consensus
-	// two nodes updated with equal but different value, change to new consensus
-	// two nodes updated with equal different value but out of time window so no change.
+	require.Equal(t, triggerConfigs, handler.triggersConfig.triggersConfigMap["testDonId2"].triggersConfig)
+
+	require.Equal(t, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig, handler.consensusConfig.triggersConfig)
+
 }
+
+// Other test cases:
+// one node updated with different value, no change as no new consensus
+// two nodes updated with equal but different value, change to new consensus
+// two nodes updated with equal different value but out of time window so no change.

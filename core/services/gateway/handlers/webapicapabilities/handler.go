@@ -85,7 +85,6 @@ func NewHandler(handlerConfig json.RawMessage, donConfig *config.DONConfig, don 
 		lggr.Errorf("error unmarshalling config: %s, err: %s", string(handlerConfig), err.Error())
 		return nil, err
 	}
-	lggr.Debugw("new web api handler", "parsedConfig", cfg)
 
 	nodeRateLimiter, err := common.NewRateLimiter(cfg.NodeRateLimiter)
 	if err != nil {
@@ -258,12 +257,6 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 			h.lggr.Errorw("error FromMapValueProto nil vmap")
 			return err
 		}
-		h.lggr.Debugw("Decoding triggerConfig", "triggerId", triggerID, "config", vmap)
-		// Decoding triggerConfig	{"version": "unset@unset",
-		// "triggerId": "foo",
-		// "config": {"Underlying":{"AllowedSenders":{"Underlying":[{"Underlying":"0x853d51d5d9935964267a5050aC53aa63ECA39bc5"}]},"AllowedTopics":{"Underlying":[{"Underlying":"daily_price_update"},{"Underlying":"ad_hoc_price_update"}]},"RateLimiter":{"Underlying":{"GlobalBurst":{"Underlying":101},"GlobalRPS":{"Underlying":100},"PerSenderBurst":{"Underlying":103},"PerSenderRPS":{"Underlying":102}}},"RequiredParams":{"Underlying":[{"Underlying":"bid"},{"Underlying":"ask"}]}}}}
-
-		// seems ok to me...
 		reqConfig, err := h.ValidateConfig(vmap)
 		if err != nil {
 			h.lggr.Errorw("error validating config", "err", err)
@@ -290,7 +283,7 @@ func (h *handler) updateTriggerConsensus() {
 	triggersHashmapByNodeId := make(map[string]string)
 
 	for index, triggerConfig := range triggers {
-		s := fmt.Sprintf("%v", triggerConfig)
+		s := fmt.Sprintf("%v", triggerConfig.triggersConfig)
 		h := sha1.New()
 		h.Write([]byte(s))
 		hash := hex.EncodeToString(h.Sum(nil))
