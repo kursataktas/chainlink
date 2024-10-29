@@ -197,7 +197,7 @@ func TestWorkflow(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			r, _, err := bootstrapNode.CreateJobRaw(fmt.Sprintf(`
+			bootstrapJobSpec := fmt.Sprintf(`
 				type = "bootstrap"
 				schemaVersion = 1
 				name = "Botostrap"
@@ -208,7 +208,9 @@ func TestWorkflow(t *testing.T) {
 		
 				[relayConfig]
 				chainID = %s
-			`, simpleOCRAddress, bc.ChainID))
+			`, simpleOCRAddress, bc.ChainID)
+			fmt.Println("Creating bootstrap job spec", bootstrapJobSpec)
+			r, _, err := bootstrapNode.CreateJobRaw(bootstrapJobSpec)
 			require.NoError(t, err)
 			require.Equal(t, len(r.Errors), 0)
 			fmt.Printf("Response from bootstrap node: %x\n", r)
@@ -223,7 +225,7 @@ func TestWorkflow(t *testing.T) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				response, _, err := nodeClient.CreateJobRaw(fmt.Sprintf(`
+				scJobSpec := fmt.Sprintf(`
 					type = "standardcapabilities"
 					schemaVersion = 1
 					name = "%s-capabilities"
@@ -240,11 +242,13 @@ func TestWorkflow(t *testing.T) {
 					"kvstore",
 					"/home/capabilities/kvstore",
 					p2pKeys.Data[0].Attributes.PeerID,
-					nodeset.CLNodes[0].Node.HostP2PURL,
+					strings.TrimPrefix(nodeset.CLNodes[0].Node.HostP2PURL, "http://"),
 					"evm",
 					bc.ChainID,
 					simpleOCRAddress,
-				))
+				)
+				fmt.Println("Creating standard capabilities job spec", scJobSpec)
+				response, _, err := nodeClient.CreateJobRaw(scJobSpec)
 				require.NoError(t, err)
 				require.Equal(t, len(response.Errors), 0)
 				fmt.Printf("Response from node %d: %x\n", i+1, response)

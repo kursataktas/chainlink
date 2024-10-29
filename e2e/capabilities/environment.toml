@@ -10,8 +10,8 @@ port = 9111
 nodes = 5
 
 [nodeset.node_spec.node]
-image = "public.ecr.aws/chainlink/chainlink"
-tag = "v2.17.0"
+image = "localhost:5050/local/chainlink"
+tag = "latest"
 user_config_overrides = """
 [Feature]
 LogPoller = true
