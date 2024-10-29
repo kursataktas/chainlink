@@ -186,15 +186,26 @@ func TestUSDCTokenTransfer(t *testing.T) {
 	// Send a message from each chain to every other chain.
 	expectedSeqNum := make(map[uint64]uint64)
 
+	oneCoin := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1))
 	// cast 677 token into ERC20Token
 	homeChainUSDCtoken, err := erc20.NewERC20(state.Chains[tenv.HomeChainSel].BurnMintTokens677[ccdeploy.USDCSymbol].Address(),
 		tenv.Env.Chains[tenv.HomeChainSel].Client)
 	require.NoError(t, err, "failed to cast USDC ERC677 token into ERC20 token in home chain")
+
 	feedChainUSDCtoken, err := erc20.NewERC20(state.Chains[tenv.FeedChainSel].BurnMintTokens677[ccdeploy.USDCSymbol].Address(),
 		tenv.Env.Chains[tenv.FeedChainSel].Client)
 	require.NoError(t, err, "failed to cast USDC ERC677 token into ERC20 token in feed chain")
+	// approve tokens
 
-	oneCoin := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1))
+	tx, err := homeChainUSDCtoken.Approve(tenv.Env.Chains[tenv.HomeChainSel].DeployerKey, state.Chains[tenv.HomeChainSel].Router.Address(), oneCoin)
+	
+	require.NoError(t, err, "failed to approve USDC tokens in home chain")
+	_, err = tenv.Env.Chains[tenv.HomeChainSel].Confirm(tx)
+	require.NoError(t, err, "failed to confirm USDC token approval in home chain")
+	tx, err = feedChainUSDCtoken.Approve(tenv.Env.Chains[tenv.FeedChainSel].DeployerKey, state.Chains[tenv.FeedChainSel].Router.Address(), oneCoin)
+	require.NoError(t, err, "failed to approve USDC tokens in feed chain")
+	_, err = tenv.Env.Chains[tenv.FeedChainSel].Confirm(tx)
+	require.NoError(t, err, "failed to confirm USDC token approval in feed chain")
 	tokens := map[uint64][]router.ClientEVMTokenAmount{
 		tenv.HomeChainSel: {{
 			Token: homeChainUSDCtoken.Address(),
@@ -216,7 +227,8 @@ func TestUSDCTokenTransfer(t *testing.T) {
 			block := latesthdr.Number.Uint64()
 			startBlocks[dest] = &block
 			_ = tokens[src]
-			seqNum := ccdeploy.SendRequest(t, e, state, src, dest, false, nil)
+
+			seqNum := ccdeploy.SendRequest(t, e, state, src, dest, false, tokens[src])
 			expectedSeqNum[dest] = seqNum
 		}
 	}
