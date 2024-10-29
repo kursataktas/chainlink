@@ -341,13 +341,13 @@ jobs:
       - name: Append Additional Info to GitHub Summary
         if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) > 0 }}
         run: |
-          echo "### Test Flakiness Threshold" >> $GITHUB_STEP_SUMMARY
+          echo "### Settings" >> $GITHUB_STEP_SUMMARY
           threshold_percentage=$(echo "${{ inputs.runThreshold }}" | awk '{printf "%.0f", $1 * 100}')
-          echo "The run threshold for considering a test flaky is set to \`${{ inputs.runThreshold }}\`. This means ${threshold_percentage}% of test reruns must pass for the test to be considered stable." >> $GITHUB_STEP_SUMMARY
-          echo "### Test Run Count" >> $GITHUB_STEP_SUMMARY
-          echo "The number of times to re-run the tests is \`${{ inputs.runCount }}\`." >> $GITHUB_STEP_SUMMARY
-          echo "### Run with Race Detector" >> $GITHUB_STEP_SUMMARY
-          echo "Tests are being run with the race detector: \`${{ inputs.runWithRace }}\`." >> $GITHUB_STEP_SUMMARY          
+          echo "| **Setting**             | **Value**  |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------------------------|------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Flakiness Threshold     | ${threshold_percentage}%       |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Run Count          | ${{ inputs.runCount }}         |" >> $GITHUB_STEP_SUMMARY
+          echo "| Race Detection          | ${{ inputs.runWithRace }}      |" >> $GITHUB_STEP_SUMMARY
           
       - name: Append No Tests Found Message to GitHub Summary
         if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) == 0 }}
