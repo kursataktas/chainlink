@@ -1,17 +1,32 @@
 [blockchain_a]
+chain_id = "31337"
+image = "f4hrenh9it/foundry:latest"
+port = "8545"
 type = "anvil"
-image = "f4hrenh9it/foundry"
-tag = "latest"
 
 [data_provider]
 port = 9111
 
 [nodeset]
 nodes = 5
+override_mode = "all"
 
-[nodeset.node_spec.node]
-image = "localhost:5050/local/chainlink"
-tag = "latest"
+[[nodeset.node_specs]]
+
+[nodeset.node_specs.db]
+image = "postgres:15.6"
+pull_image = true
+
+[nodeset.node_specs.node]
+image = "localhost:5050/local/chainlink:latest"
+# docker_file = "../../core/chainlink.Dockerfile"
+# docker_ctx = "../.."
+# docker_image_name = "chainlink"
+# pull_image = true
+
+# default directory inside container is "/capabilities/$binary_name"
+capabilities = ["./kvstore"]
+
 user_config_overrides = """
 [Feature]
 LogPoller = true
@@ -24,5 +39,7 @@ DatabaseTimeout = '1s'
 Enabled = true
 ListenAddresses = ['0.0.0.0:6690']
 """
-# default directory inside container is "/capabilities/$binary_name"
-capabilities = ["./kvstore"]
+
+# [nodeset.node_spec.node]
+# image = "localhost:5050/local/chainlink"
+# tag = "latest"

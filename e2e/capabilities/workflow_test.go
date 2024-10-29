@@ -152,6 +152,7 @@ func TestWorkflow(t *testing.T) {
 	t.Run("smoke test", func(t *testing.T) {
 		in, err := framework.Load[WorkflowTestConfig](t)
 		require.NoError(t, err)
+		pkey := os.Getenv("PRIVATE_KEY")
 
 		// deploy docker test environment
 		bc, err := blockchain.NewBlockchainNetwork(in.BlockchainA)
@@ -168,7 +169,7 @@ func TestWorkflow(t *testing.T) {
 		// connect clients
 		sc, err := seth.NewClientBuilder().
 			WithRpcUrl(bc.Nodes[0].HostWSUrl).
-			WithPrivateKeys([]string{os.Getenv("PRIVATE_KEY")}).
+			WithPrivateKeys([]string{pkey}).
 			Build()
 		require.NoError(t, err)
 
@@ -240,7 +241,7 @@ func TestWorkflow(t *testing.T) {
 					chain_id="%s"
 					ocr_contract_address="%s"`,
 					"kvstore",
-					"/home/capabilities/kvstore",
+					"/kvstore",
 					p2pKeys.Data[0].Attributes.PeerID,
 					strings.TrimPrefix(nodeset.CLNodes[0].Node.HostP2PURL, "http://"),
 					"evm",
