@@ -10,6 +10,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	evmtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/jpillora/backoff"
 
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	"github.com/smartcontractkit/chainlink-common/pkg/services"
@@ -19,9 +20,10 @@ import (
 )
 
 const (
-	broadcastInterval       time.Duration = 15 * time.Second
-	maxInFlightTransactions uint64        = 16
-	maxAllowedAttempts      uint16        = 10
+	broadcastInterval                  time.Duration = 30 * time.Second
+	inFlightTransactionRecheckInterval time.Duration = 1 * time.Second
+	maxInFlightTransactions            uint64        = 16
+	maxAllowedAttempts                 uint16        = 10
 )
 
 type Client interface {
@@ -145,24 +147,44 @@ func (t *Txm) Abandon() error {
 	return t.txStore.AbandonPendingTransactions(context.TODO(), t.address)
 }
 
+func newBackoff() backoff.Backoff {
+	return backoff.Backoff{
+		Min:    1 * time.Second,
+		Max:    30 * time.Second,
+		Jitter: true,
+	}
+}
+
 func (t *Txm) broadcastLoop() {
 	defer t.wg.Done()
 	broadcasterTicker := time.NewTicker(utils.WithJitter(broadcastInterval))
 	defer broadcasterTicker.Stop()
+	backoffT := newBackoff()
+	var backOffCh <-chan time.Time
 
 	for {
 		start := time.Now()
-		if err := t.broadcastTransaction(); err != nil {
+		bo, err := t.broadcastTransaction()
+		if err != nil {
 			t.lggr.Errorf("Error during transaction broadcasting: %v", err)
 		} else {
 			t.lggr.Debug("Transaction broadcasting time elapsed: ", time.Since(start))
+		}
+		if bo {
+			backOffCh = time.After(backoffT.Duration())
+		} else {
+			backoffT = newBackoff()
+			backOffCh = nil
 		}
 		select {
 		case <-t.broadcastStopCh:
 			return
 		case <-t.triggerCh:
 			broadcasterTicker.Reset(utils.WithJitter(broadcastInterval))
+		case <-backOffCh:
+			broadcasterTicker.Reset(utils.WithJitter(broadcastInterval))
 		case <-broadcasterTicker.C:
+			continue
 		}
 	}
 }
@@ -187,44 +209,48 @@ func (t *Txm) backfillLoop() {
 	}
 }
 
-func (t *Txm) broadcastTransaction() error {
-	_, unconfirmedCount, err := t.txStore.FetchUnconfirmedTransactionAtNonceWithCount(context.TODO(), 0, t.address)
-	if err != nil {
-		return err
-	}
-
-	// Optimistically send up to 1/3 of the maxInFlightTransactions. After that threshold, broadcast more cautiously
-	// by checking the pending nonce so no more than maxInFlightTransactions/3 can get stuck simultaneously i.e. due
-	// to insufficient balance. We're making this trade-off to avoid storing stuck transactions and making unnecessary
-	// RPC calls. The upper limit is always maxInFlightTransactions regardless of the pending nonce.
-	if unconfirmedCount >= int(maxInFlightTransactions)/3 {
-		if unconfirmedCount > int(maxInFlightTransactions) {
-			t.lggr.Warnf("Reached transaction limit: %d for unconfirmed transactions", maxInFlightTransactions)
-			return nil
-		}
-		pendingNonce, err := t.client.PendingNonceAt(context.TODO(), t.address)
+func (t *Txm) broadcastTransaction() (bool, error) {
+	for {
+		_, unconfirmedCount, err := t.txStore.FetchUnconfirmedTransactionAtNonceWithCount(context.TODO(), 0, t.address)
 		if err != nil {
-			return err
+			return false, err
 		}
-		if t.nonce.Load() > pendingNonce {
-			t.lggr.Warnf("Reached transaction limit. LocalNonce: %d, PendingNonce %d, unconfirmedCount: %d",
-				t.nonce.Load(), pendingNonce, unconfirmedCount)
-			return nil
+
+		// Optimistically send up to 1/3 of the maxInFlightTransactions. After that threshold, broadcast more cautiously
+		// by checking the pending nonce so no more than maxInFlightTransactions/3 can get stuck simultaneously i.e. due
+		// to insufficient balance. We're making this trade-off to avoid storing stuck transactions and making unnecessary
+		// RPC calls. The upper limit is always maxInFlightTransactions regardless of the pending nonce.
+		if unconfirmedCount >= int(maxInFlightTransactions)/3 {
+			if unconfirmedCount > int(maxInFlightTransactions) {
+				t.lggr.Warnf("Reached transaction limit: %d for unconfirmed transactions", maxInFlightTransactions)
+				return true, nil
+			}
+			pendingNonce, err := t.client.PendingNonceAt(context.TODO(), t.address)
+			if err != nil {
+				return false, err
+			}
+			if t.nonce.Load() > pendingNonce {
+				t.lggr.Warnf("Reached transaction limit. LocalNonce: %d, PendingNonce %d, unconfirmedCount: %d",
+					t.nonce.Load(), pendingNonce, unconfirmedCount)
+				return true, nil
+			}
+		}
+
+		tx, err := t.txStore.UpdateUnstartedTransactionWithNonce(context.TODO(), t.address, t.nonce.Load())
+		if err != nil {
+			return false, err
+		}
+		if tx == nil {
+			return false, nil
+		}
+		tx.Nonce = t.nonce.Load()
+		tx.State = types.TxUnconfirmed
+		t.nonce.Add(1)
+
+		if err := t.createAndSendAttempt(tx); err != nil {
+			return true, err
 		}
 	}
-
-	tx, err := t.txStore.UpdateUnstartedTransactionWithNonce(context.TODO(), t.address, t.nonce.Load())
-	if err != nil {
-		return err
-	}
-	if tx == nil {
-		return err
-	}
-	tx.Nonce = t.nonce.Load()
-	tx.State = types.TxUnconfirmed
-	t.nonce.Add(1)
-
-	return t.createAndSendAttempt(tx)
 }
 
 func (t *Txm) createAndSendAttempt(tx *types.Transaction) error {
