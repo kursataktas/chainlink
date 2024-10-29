@@ -120,7 +120,7 @@ func TestVRFV2Performance(t *testing.T) {
 		testConfig,
 		l,
 	)
-	require.NoError(t, err, "error setting up new consumers and subs")
+	require.NoError(t, err, "errors setting up new consumers and subs")
 	for _, subID := range subIDs {
 		subscription, err := vrfContracts.CoordinatorV2.GetSubscription(testcontext.Get(t), subID)
 		require.NoError(t, err, "error getting subscription information for subscription %d", subID)
