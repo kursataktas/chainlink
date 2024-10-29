@@ -151,24 +151,18 @@ func (t *Txm) broadcastLoop() {
 	defer broadcasterTicker.Stop()
 
 	for {
+		start := time.Now()
+		if err := t.broadcastTransaction(); err != nil {
+			t.lggr.Errorf("Error during transaction broadcasting: %v", err)
+		} else {
+			t.lggr.Debug("Transaction broadcasting time elapsed: ", time.Since(start))
+		}
 		select {
 		case <-t.broadcastStopCh:
 			return
 		case <-t.triggerCh:
-			start := time.Now()
-			if err := t.broadcastTransaction(); err != nil {
-				t.lggr.Errorf("Error during triggered transaction broadcasting: %v", err)
-			} else {
-				t.lggr.Debug("Triggered transaction broadcasting time elapsed: ", time.Since(start))
-			}
 			broadcasterTicker.Reset(utils.WithJitter(broadcastInterval))
 		case <-broadcasterTicker.C:
-			start := time.Now()
-			if err := t.broadcastTransaction(); err != nil {
-				t.lggr.Errorf("Error during transaction broadcasting: %v", err)
-			} else {
-				t.lggr.Debug("Transaction broadcasting time elapsed: ", time.Since(start))
-			}
 		}
 	}
 }
@@ -215,7 +209,7 @@ func (t *Txm) broadcastTransaction() error {
 		if t.nonce.Load() > pendingNonce {
 			t.lggr.Warnf("Reached transaction limit. LocalNonce: %d, PendingNonce %d, unconfirmedCount: %d",
 				t.nonce.Load(), pendingNonce, unconfirmedCount)
-				return nil
+			return nil
 		}
 	}
 
@@ -247,9 +241,10 @@ func (t *Txm) createAndSendAttempt(tx *types.Transaction) error {
 }
 
 func (t *Txm) sendTransactionWithError(tx *types.Transaction, attempt *types.Attempt) (err error) {
+	start := time.Now()
 	txErr := t.client.SendTransaction(context.TODO(), attempt.SignedTransaction)
 	tx.AttemptCount++
-	t.lggr.Infow("Broadcasted attempt", "tx", tx, "attempt", attempt, "txErr: ", txErr)
+	t.lggr.Infow("Broadcasted attempt", "tx", tx, "attempt", attempt, "duration", time.Since(start), "txErr: ", txErr)
 	if txErr != nil && t.errorHandler != nil {
 		if err = t.errorHandler.HandleError(tx, txErr, t.attemptBuilder, t.client, t.txStore); err != nil {
 			return
