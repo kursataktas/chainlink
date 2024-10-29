@@ -352,7 +352,6 @@ var multiWordSpecTemplate string
 // Tests both single and multiple word responses -
 // i.e. both fulfillOracleRequest2 and fulfillOracleRequest.
 func TestIntegration_DirectRequest(t *testing.T) {
-	t.Skip("TODO FIXME")
 	t.Parallel()
 	tests := []struct {
 		name    string
@@ -428,10 +427,7 @@ func TestIntegration_DirectRequest(t *testing.T) {
 			empty := big.NewInt(0)
 			assertPricesUint256(t, empty, empty, empty, operatorContracts.multiWord)
 
-			stopBlocks := utils.FiniteTicker(100*time.Millisecond, func() {
-				triggerAllKeys(t, app)
-				b.Commit()
-			})
+			commit, stopBlocks := cltest.Mine(b, 100*time.Millisecond)
 			defer stopBlocks()
 
 			pipelineRuns := cltest.WaitForPipelineComplete(t, 0, j.ID, 1, 14, app.JobORM(), testutils.WaitTimeout(t)/2, time.Second)
@@ -448,7 +444,7 @@ func TestIntegration_DirectRequest(t *testing.T) {
 			copy(jobIDSingleWord[:], jobSingleWord.ExternalJobID[:])
 			tx, err = operatorContracts.singleWord.SetSpecID(operatorContracts.user, jobIDSingleWord)
 			require.NoError(t, err)
-			b.Commit()
+			commit()
 			cltest.RequireTxSuccessful(t, b.Client(), tx.Hash())
 			mockServerUSD2 := cltest.NewHTTPMockServer(t, 200, "GET", `{"USD": 614.64}`)
 			tx, err = operatorContracts.singleWord.RequestMultipleParametersWithCustomURLs(operatorContracts.user,
@@ -456,7 +452,7 @@ func TestIntegration_DirectRequest(t *testing.T) {
 				big.NewInt(1000),
 			)
 			require.NoError(t, err)
-			b.Commit()
+			commit()
 			cltest.RequireTxSuccessful(t, b.Client(), tx.Hash())
 
 			pipelineRuns = cltest.WaitForPipelineComplete(t, 0, jobSingleWord.ID, 1, 8, app.JobORM(), testutils.WaitTimeout(t), time.Second)
@@ -503,7 +499,6 @@ func setupAppForEthTx(t *testing.T, operatorContracts OperatorContracts) (app *c
 }
 
 func TestIntegration_AsyncEthTx(t *testing.T) {
-	t.Skip("TODO FIXME")
 	t.Parallel()
 	operatorContracts := setupOperatorContracts(t)
 	b := operatorContracts.sim
@@ -791,7 +786,7 @@ func setupForwarderEnabledNode(t *testing.T, owner *bind.TransactOpts, portV2 in
 }
 
 func TestIntegration_OCR(t *testing.T) {
-	t.Skip("TODO FIXME")
+	t.Skip("TODO FIXME, RUNS LOCALLY FLAKES IN CI")
 	testutils.SkipShort(t, "long test")
 	t.Parallel()
 	tests := []struct {
@@ -857,6 +852,7 @@ func TestIntegration_OCR(t *testing.T) {
 				transmitters,
 			)
 			require.NoError(t, err)
+			b.Commit()
 			signers, transmitters, threshold, encodedConfigVersion, encodedConfig, err := confighelper.ContractSetConfigArgsForIntegrationTest(
 				oracles,
 				1,
