@@ -1022,6 +1022,24 @@ contract OffRamp_executeSingleMessage is OffRampSetup {
   function test_executeSingleMessage_NoTokens_Success() public {
     Internal.Any2EVMRampMessage memory message =
       _generateAny2EVMMessageNoTokens(SOURCE_CHAIN_SELECTOR_1, ON_RAMP_ADDRESS_1, 1);
+
+    Client.Any2EVMMessage memory expectedAny2EvmMessage = Client.Any2EVMMessage({
+      messageId: message.header.messageId,
+      sourceChainSelector: message.header.sourceChainSelector,
+      sender: message.sender,
+      data: message.data,
+      destTokenAmounts: new Client.EVMTokenAmount[](0)
+    });
+    vm.expectCall(
+      address(s_destRouter),
+      abi.encodeWithSelector(
+        IRouter.routeMessage.selector,
+        expectedAny2EvmMessage,
+        Internal.GAS_FOR_CALL_EXACT_CHECK,
+        message.gasLimit,
+        message.receiver
+      )
+    );
     s_offRamp.executeSingleMessage(message, new bytes[](message.tokenAmounts.length), new uint32[](0));
   }
 
@@ -2229,14 +2247,9 @@ contract OffRamp_execute is OffRampSetup {
       signers: s_validSigners,
       transmitters: s_validTransmitters
     });
+
+    vm.expectRevert(OffRamp.SignatureVerificationNotAllowedInExecutionPlugin.selector);
     s_offRamp.setOCR3Configs(ocrConfigs);
-
-    Internal.Any2EVMRampMessage[] memory messages =
-      _generateSingleBasicMessage(SOURCE_CHAIN_SELECTOR_1, ON_RAMP_ADDRESS_1);
-    Internal.ExecutionReport[] memory reports = _generateBatchReportFromMessages(SOURCE_CHAIN_SELECTOR_1, messages);
-
-    vm.expectRevert();
-    _execute(reports);
   }
 
   function test_ZeroReports_Revert() public {
@@ -3180,6 +3193,46 @@ contract OffRamp_applySourceChainConfigUpdates is OffRampSetup {
     s_offRamp.applySourceChainConfigUpdates(sourceChainConfigs);
   }
 
+  function test_allowNonOnRampUpdateAfterLaneIsUsed_success() public {
+    OffRamp.SourceChainConfigArgs[] memory sourceChainConfigs = new OffRamp.SourceChainConfigArgs[](1);
+    sourceChainConfigs[0] = OffRamp.SourceChainConfigArgs({
+      router: s_destRouter,
+      sourceChainSelector: SOURCE_CHAIN_SELECTOR_1,
+      onRamp: ON_RAMP_ADDRESS_1,
+      isEnabled: true
+    });
+
+    s_offRamp.applySourceChainConfigUpdates(sourceChainConfigs);
+
+    Internal.MerkleRoot[] memory roots = new Internal.MerkleRoot[](1);
+    roots[0] = Internal.MerkleRoot({
+      sourceChainSelector: SOURCE_CHAIN_SELECTOR_1,
+      onRampAddress: ON_RAMP_ADDRESS_1,
+      minSeqNr: 1,
+      maxSeqNr: 2,
+      merkleRoot: "test #2"
+    });
+
+    _commit(
+      OffRamp.CommitReport({
+        priceUpdates: _getSingleTokenPriceUpdateStruct(s_sourceFeeToken, 4e18),
+        merkleRoots: roots,
+        rmnSignatures: s_rmnSignatures,
+        rmnRawVs: 0
+      }),
+      s_latestSequenceNumber
+    );
+
+    vm.startPrank(OWNER);
+
+    // Allow changes to the Router even after the seqNum is not 1
+    assertGt(s_offRamp.getSourceChainConfig(sourceChainConfigs[0].sourceChainSelector).minSeqNr, 1);
+
+    sourceChainConfigs[0].router = IRouter(makeAddr("newRouter"));
+
+    s_offRamp.applySourceChainConfigUpdates(sourceChainConfigs);
+  }
+
   // Reverts
 
   function test_ZeroOnRampAddress_Revert() public {
@@ -3291,6 +3344,47 @@ contract OffRamp_commit is OffRampSetup {
   }
 
   function test_ReportOnlyRootSuccess_gas() public {
+    uint64 max1 = 931;
+    bytes32 root = "Only a single root";
+
+    Internal.MerkleRoot[] memory roots = new Internal.MerkleRoot[](1);
+    roots[0] = Internal.MerkleRoot({
+      sourceChainSelector: SOURCE_CHAIN_SELECTOR_1,
+      onRampAddress: ON_RAMP_ADDRESS_1,
+      minSeqNr: 1,
+      maxSeqNr: max1,
+      merkleRoot: root
+    });
+
+    OffRamp.CommitReport memory commitReport = OffRamp.CommitReport({
+      priceUpdates: _getEmptyPriceUpdates(),
+      merkleRoots: roots,
+      rmnSignatures: s_rmnSignatures,
+      rmnRawVs: 0
+    });
+
+    vm.expectEmit();
+    emit OffRamp.CommitReportAccepted(commitReport.merkleRoots, commitReport.priceUpdates);
+
+    vm.expectEmit();
+    emit MultiOCR3Base.Transmitted(uint8(Internal.OCRPluginType.Commit), s_configDigestCommit, s_latestSequenceNumber);
+
+    _commit(commitReport, s_latestSequenceNumber);
+
+    assertEq(max1 + 1, s_offRamp.getSourceChainConfig(SOURCE_CHAIN_SELECTOR).minSeqNr);
+    assertEq(0, s_offRamp.getLatestPriceSequenceNumber());
+    assertEq(block.timestamp, s_offRamp.getMerkleRoot(SOURCE_CHAIN_SELECTOR_1, root));
+  }
+
+  function test_RootWithRMNDisabled_success() public {
+    // force RMN verification to fail
+    vm.mockCallRevert(address(s_mockRMNRemote), abi.encodeWithSelector(IRMNRemote.verify.selector), bytes(""));
+
+    // but ☝️ doesn't matter because RMN verification is disabled
+    OffRamp.DynamicConfig memory dynamicConfig = _generateDynamicOffRampConfig(address(s_feeQuoter));
+    dynamicConfig.isRMNVerificationDisabled = true;
+    s_offRamp.setDynamicConfig(dynamicConfig);
+
     uint64 max1 = 931;
     bytes32 root = "Only a single root";
 
@@ -3792,7 +3886,7 @@ contract OffRamp_afterOC3ConfigSet is OffRampSetup {
       transmitters: s_validTransmitters
     });
 
-    vm.expectRevert(OffRamp.SignatureVerificationDisabled.selector);
+    vm.expectRevert(OffRamp.SignatureVerificationRequiredInCommitPlugin.selector);
     s_offRamp.setOCR3Configs(ocrConfigs);
   }
 }
