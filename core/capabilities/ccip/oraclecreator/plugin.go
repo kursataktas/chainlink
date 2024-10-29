@@ -453,8 +453,6 @@ func getChainReaderConfig(
 		chainReaderConfig = evmconfig.MergeReaderConfigs(chainReaderConfig, evmconfig.HomeChainReaderConfigRaw)
 	}
 
-	lggr.Debugw("Chain reader config", "chainID", chainID, "config", chainReaderConfig)
-
 	marshaledConfig, err := json.Marshal(chainReaderConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chain reader config: %w", err)
