@@ -33,3 +33,5 @@ gcr_creds.env
 
 go.work
 go.work.sum
+
+e2e/

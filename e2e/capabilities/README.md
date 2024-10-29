@@ -40,14 +40,19 @@ export PRIVATE_KEY="..."
 go test -v -run TestDON
 ```
 
-### Using local image
-From the repository root
+### Using local image and rebuilding it
+You can add `export CTF_BUILD_DOCKER_IMAGES=true` and configure you image in TOML:
 ```
-docker run -d -p 5050:5000 --name local-registry registry:2
-docker build -t localhost:5050/chainlink:latest -f ./core/chainlink.Dockerfile .
-docker push localhost:5050/chainlink:latest
+    [nodeset.node_specs.node]
+      image = "public.ecr.aws/chainlink/chainlink:v2.17.0" # this will be used without CTF_BUILD_DOCKER_IMAGES flag set
+      docker_file = "../../core/chainlink.Dockerfile"      # these are used when CTF_BUILD_DOCKER_IMAGES is present
+      docker_ctx = "../.."
+      docker_image_name = "chainlink"
+      pull_image = true
 ```
-Use [local](smoke_local.toml) config with this image 
+Image will be published as `localhost:5050/$docker_image_name:latest` and used by framework.
+
+If you don't have a local registry the framework will spin it up for you (`registry:2` docker container).
 
 ### Overriding configs
 You can override any configuration by providing more `TOML` files

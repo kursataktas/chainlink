@@ -3,6 +3,7 @@ package onchain
 import (
 	"context"
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -61,6 +62,9 @@ func SendETH(client *ethclient.Client, privateKeyHex string, toAddress string, a
 }
 
 func FundNodes(sc *seth.Client, nodes []*clclient.ChainlinkClient, pkey string, ethAmount float64) error {
+	if ethAmount == 0 {
+		return errors.New("funds_eth is 0, set some value in config, ex.: funds_eth = 30.0")
+	}
 	for _, cl := range nodes {
 		ek, err := cl.ReadPrimaryETHKey()
 		if err != nil {

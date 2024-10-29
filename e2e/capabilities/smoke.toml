@@ -1,3 +1,4 @@
+funds_eth = 30.0
 
 [blockchain_a]
   chain_id = "31337"
@@ -24,4 +25,7 @@
 #      path to your binaries
 #      capabilities = ["./ctf", "./ctf2"]
       image = "public.ecr.aws/chainlink/chainlink:v2.17.0"
+      docker_file = "../../core/chainlink.Dockerfile"
+      docker_ctx = "../.."
+      docker_image_name = "chainlink"
       pull_image = true
