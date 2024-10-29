@@ -142,6 +142,8 @@ func (t *telemeter) collectV3PremiumLegacyTelemetry(d TelemetryObservation) {
 			continue
 		}
 
+		t.eng.SugaredLogger.Infow("Sending LLO EA telemetry", "bytes", bytes)
+
 		t.monitoringEndpoint.SendLog(bytes)
 	}
 }
