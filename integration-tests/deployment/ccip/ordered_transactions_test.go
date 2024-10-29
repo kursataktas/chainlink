@@ -1,8 +1,11 @@
 package ccipdeployment
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/smartcontractkit/ccip-owner-contracts/pkg/proposal/timelock"
 	"github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
+	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/router"
+	"math/big"
 	"testing"
 
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
@@ -71,7 +74,7 @@ func TestTransactionOrdering(t *testing.T) {
 	state, err = LoadOnchainState(e, tenv.Ab)
 	require.NoError(t, err)
 
-	_, err = DeployAndRegisterTokenPools(e, tenv.Env.AllChainSelectors(), state)
+	tokenPoolData, err := DeployAndRegisterTokenPools(e, tenv.Env.AllChainSelectors(), state)
 	require.NoError(t, err)
 
 	state, err = LoadOnchainState(e, tenv.Ab)
@@ -93,76 +96,53 @@ func TestTransactionOrdering(t *testing.T) {
 		}
 	}
 
-	// Add all lanes
+	// Add lane
 	require.NoError(t, AddLanesForAll(e, state))
 
-	//src, dst := e.Chains[e.AllChainSelectors()[0]], e.Chains[e.AllChainSelectors()[0]]
 	src := e.Chains[tenv.HomeChainSel]
 	dst := e.Chains[tenv.FeedChainSel]
-	//starthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
-	//require.NoError(t, err)
-	//startBlock := starthdr.Number.Uint64()
-
 	// Try out multiple requests, with combinations of messages and tokens
-	//requests := []router.ClientEVM2AnyMessage{
-	//	{
-	//		Receiver:     common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-	//		Data:         []byte("Hello Chain"),
-	//		TokenAmounts: nil,
-	//		FeeToken:     common.HexToAddress("0x0"),
-	//		ExtraArgs:    nil,
-	//	},
-	//	{
-	//		Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-	//		Data:     []byte("Hello Chain, again"),
-	//		TokenAmounts: []router.ClientEVMTokenAmount{
-	//			{
-	//				tokenPoolData[src.Selector].token.Address(),
-	//				big.NewInt(10),
-	//			},
-	//		},
-	//		FeeToken:  common.HexToAddress("0x0"),
-	//		ExtraArgs: nil,
-	//	},
-	//	{
-	//		Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
-	//		Data:     nil,
-	//		TokenAmounts: []router.ClientEVMTokenAmount{
-	//			{
-	//				tokenPoolData[src.Selector].token.Address(),
-	//				big.NewInt(100),
-	//			},
-	//		},
-	//		FeeToken:  common.HexToAddress("0x0"),
-	//		ExtraArgs: nil,
-	//	},
-	//}
-	startBlocks := make(map[uint64]*uint64)
-	// Send a message from each chain to every other chain.
-	expectedSeqNum := make(map[uint64]uint64)
+	requests := []router.ClientEVM2AnyMessage{
+		{
+			Receiver:     common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+			Data:         []byte("Hello Chain"),
+			TokenAmounts: nil,
+			FeeToken:     common.HexToAddress("0x0"),
+			ExtraArgs:    nil,
+		},
+		{
+			Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+			Data:     []byte("Hello Chain, again"),
+			TokenAmounts: []router.ClientEVMTokenAmount{
+				{
+					tokenPoolData[src.Selector].Token.Address(),
+					big.NewInt(10),
+				},
+			},
+			FeeToken:  common.HexToAddress("0x0"),
+			ExtraArgs: nil,
+		},
+		{
+			Receiver: common.LeftPadBytes(state.Chains[dst.Selector].Receiver.Address().Bytes(), 32),
+			Data:     nil,
+			TokenAmounts: []router.ClientEVMTokenAmount{
+				{
+					tokenPoolData[src.Selector].Token.Address(),
+					big.NewInt(100),
+				},
+			},
+			FeeToken:  common.HexToAddress("0x0"),
+			ExtraArgs: nil,
+		},
+	}
 
-	//for src := range e.Chains {
-	//	for dest, destChain := range e.Chains {
-	//		if src == dest {
-	//			continue
-	//		}
-	//		latesthdr, err := destChain.Client.HeaderByNumber(testcontext.Get(t), nil)
-	//		require.NoError(t, err)
-	//		block := latesthdr.Number.Uint64()
-	//		startBlocks[dest] = &block
-	//		seqNum := SendRequest(t, e, state, src, dest, false)
-	//		expectedSeqNum[dest] = seqNum
-	//	}
-	//}
 	latesthdr, err := dst.Client.HeaderByNumber(testcontext.Get(t), nil)
 	require.NoError(t, err)
 	block := latesthdr.Number.Uint64()
-	startBlocks[dst.Selector] = &block
-	seqNum := SendRequest(t, e, state, src.Selector, dst.Selector, false)
-	expectedSeqNum[dst.Selector] = seqNum
 
-	seqNum2 := SendRequest(t, e, state, src.Selector, dst.Selector, false)
-	seqNum3 := SendRequest(t, e, state, src.Selector, dst.Selector, false)
+	seqNum := SendMessage(t, e, state, src.Selector, dst.Selector, false, requests[0])
+	seqNum2 := SendMessage(t, e, state, src.Selector, dst.Selector, false, requests[1])
+	seqNum3 := SendMessage(t, e, state, src.Selector, dst.Selector, false, requests[2])
 
 	//var seqNums []uint64
 	//for range len(requests) {

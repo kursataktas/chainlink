@@ -757,11 +757,11 @@ func initializeTokenPool(e deployment.Environment,
 		return token, pool, err
 	}
 
-	txn, err = token.Mint(e.Chains[selector].DeployerKey, poolAddr, big.NewInt(100000))
-	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
-		e.Logger.Errorw("Failed to mint tokens to pool", "err", err)
+	val, err := token.BalanceOf(nil, e.Chains[selector].DeployerKey.From)
+	if err != nil {
 		return token, pool, err
 	}
+	fmt.Printf("balance of deployerkey %s is %d", e.Chains[selector].DeployerKey.From, val)
 
 	txn, err = state.Chains[selector].RegistryModule.RegisterAdminViaOwner(e.Chains[selector].DeployerKey, tokenAddr)
 	if _, err := deployment.ConfirmIfNoError(e.Chains[selector], txn, err); err != nil {
@@ -791,8 +791,8 @@ func initializeTokenPool(e deployment.Environment,
 }
 
 type registeredPools struct {
-	token *burn_mint_erc677.BurnMintERC677
-	pool  *lock_release_token_pool.LockReleaseTokenPool
+	Token *burn_mint_erc677.BurnMintERC677
+	Pool  *lock_release_token_pool.LockReleaseTokenPool
 }
 
 func DeployAndRegisterTokenPools(e deployment.Environment, selectors []uint64, state CCIPOnChainState) (map[uint64]registeredPools, error) {
@@ -804,8 +804,42 @@ func DeployAndRegisterTokenPools(e deployment.Environment, selectors []uint64, s
 			return ret, err
 		}
 		ret[selector] = registeredPools{
-			token: token,
-			pool:  pool,
+			Token: token,
+			Pool:  pool,
+		}
+	}
+
+	cap, _ := big.NewInt(0).SetString("30000000000000000000000000", 10)
+	rate, _ := big.NewInt(0).SetString("50000000000000000000000", 10)
+	for _, src := range selectors {
+		for _, dest := range selectors {
+			if src == dest {
+				continue
+			}
+			txn, err := ret[src].Pool.ApplyChainUpdates(e.Chains[src].DeployerKey, []lock_release_token_pool.TokenPoolChainUpdate{
+				{
+					RemoteChainSelector: dest,
+					Allowed:             true,
+					RemotePoolAddress:   ret[dest].Pool.Address().Bytes(),
+					RemoteTokenAddress:  ret[dest].Token.Address().Bytes(),
+					OutboundRateLimiterConfig: lock_release_token_pool.RateLimiterConfig{
+						IsEnabled: true,
+						Capacity:  cap,
+						Rate:      rate,
+					},
+					InboundRateLimiterConfig: lock_release_token_pool.RateLimiterConfig{
+						IsEnabled: true,
+						Capacity:  cap,
+						Rate:      rate,
+					},
+				},
+			})
+			if _, err := deployment.ConfirmIfNoError(e.Chains[src], txn, err); err != nil {
+				e.Logger.Errorf("Failed to apply chain updates on token pool %d for %d", src, dest)
+				return ret, err
+			}
+
+			fmt.Printf("applied chain updates for token pools %d -> %d  and token pool address %s", src, dest, ret[src].Pool.Address())
 		}
 	}
 
