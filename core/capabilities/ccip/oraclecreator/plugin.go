@@ -329,7 +329,7 @@ func (i *pluginOracleCreator) createReadersAndWriters(
 			return nil, nil, fmt.Errorf("failed to get chain selector from chain ID %s: %w", chainID.String(), err1)
 		}
 
-		chainReaderConfig, err1 := getChainReaderConfig(chainID.Uint64(), destChainID, homeChainID, ofc, chainSelector)
+		chainReaderConfig, err1 := getChainReaderConfig(i.lggr, chainID.Uint64(), destChainID, homeChainID, ofc, chainSelector)
 		if err1 != nil {
 			return nil, nil, fmt.Errorf("failed to get chain reader config: %w", err1)
 		}
@@ -424,6 +424,7 @@ func (i *pluginOracleCreator) getChainID(chainSelector cciptypes.ChainSelector) 
 }
 
 func getChainReaderConfig(
+	lggr logger.Logger,
 	chainID uint64,
 	destChainID uint64,
 	homeChainID uint64,
@@ -438,16 +439,21 @@ func getChainReaderConfig(
 	}
 
 	if !ofc.commitEmpty() && ofc.commit().PriceFeedChainSelector == chainSelector {
+		lggr.Debugw("Adding feed reader config", "chainID", chainID)
 		chainReaderConfig = evmconfig.MergeReaderConfigs(chainReaderConfig, evmconfig.FeedReaderConfig)
 	}
 
-	if isUSDCEnabled(chainID, destChainID, ofc) {
+	if isUSDCEnabled(ofc) {
+		lggr.Debugw("Adding USDC reader config", "chainID", chainID)
 		chainReaderConfig = evmconfig.MergeReaderConfigs(chainReaderConfig, evmconfig.USDCReaderConfig)
 	}
 
 	if chainID == homeChainID {
+		lggr.Debugw("Adding home chain reader config", "chainID", chainID)
 		chainReaderConfig = evmconfig.MergeReaderConfigs(chainReaderConfig, evmconfig.HomeChainReaderConfigRaw)
 	}
+
+	lggr.Debugw("Chain reader config", "chainID", chainID, "config", chainReaderConfig)
 
 	marshaledConfig, err := json.Marshal(chainReaderConfig)
 	if err != nil {
@@ -457,11 +463,7 @@ func getChainReaderConfig(
 	return marshaledConfig, nil
 }
 
-func isUSDCEnabled(chainID uint64, destChainID uint64, ofc offChainConfig) bool {
-	if chainID == destChainID {
-		return false
-	}
-
+func isUSDCEnabled(ofc offChainConfig) bool {
 	if ofc.execEmpty() {
 		return false
 	}
