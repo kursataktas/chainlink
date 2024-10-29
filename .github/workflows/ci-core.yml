@@ -412,8 +412,8 @@ jobs:
       runWithRace: true
       findByTestFilesDiff: true
       findByAffectedPackages: false
-      slack_notification_after_tests_channel_id: 'C07DKUTAV2L'
-      slack_notification_after_tests_name: 'Flaky Test Detection'
+      slackNotificationAfterTestsChannelId: 'C07TRF65CNS' #flaky-test-detector-notifications
+      slackNotificationAfterTestsName: 'Flaky Test Detection'
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
 
