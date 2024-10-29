@@ -18,7 +18,7 @@ import (
 	"github.com/smartcontractkit/chainlink/deployment/environment/clo"
 	"github.com/smartcontractkit/chainlink/deployment/environment/clo/models"
 	"github.com/smartcontractkit/chainlink/deployment/keystone"
-	kcr "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/capabilities_registry"
+	kcr "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/capabilities_registry_1_0_1"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
 )
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink/v2/core/chains/evm/assets"
 	kcr_1_0_1 "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/capabilities_registry_1_0_1"
-	forwarder_1_0_0 "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/forwarder"
+	forwarder_1_0_0 "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/forwarder_1_0_0"
 	ocr3_1_0_0 "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/ocr3_capability_1_0_0"
 	"github.com/smartcontractkit/chainlink/v2/core/internal/testutils"
 )
