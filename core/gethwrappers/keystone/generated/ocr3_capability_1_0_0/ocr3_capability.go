@@ -1,7 +1,7 @@
 // Code generated - DO NOT EDIT.
 // This file is a generated binding and any manual changes will be lost.
 
-package ocr3_capability
+package ocr3_capability_1_0_0
 
 import (
 	"errors"
