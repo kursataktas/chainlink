@@ -46,14 +46,12 @@ You can quickly rebuild a local image:
     [nodeset.node_specs.node]
       docker_file = "../../core/chainlink.Dockerfile"
       docker_ctx = "../.."
-      docker_image_name = "chainlink"
-      pull_image = true
 ```
-Image will be published as `localhost:5050/$docker_image_name:latest` and used by framework.
+Image will be published as `localhost:5050/ctftmp:latest` and used by the framework.
 
 If you don't have a local registry the framework will spin it up for you (`registry:2` docker container).
 
-You can provide either `image` or `docker` fields to switch between local build and an existing image.
+You can provide either `image` or `docker_file`, `docker_ctx` fields to switch between local build and an existing image.
 
 ### Overriding configs
 You can override any configuration by providing more `TOML` files
