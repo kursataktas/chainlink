@@ -21,19 +21,19 @@ func TestVersion(t *testing.T) {
 	}, 30e6)
 
 	t.Run("capabilities registry v1_0_1", func(t *testing.T) {
-		_, _, capreg_1_0_1, err := kcr_1_0_1.DeployCapabilitiesRegistry(owner, chain)
+		_, _, capreg, err := kcr_1_0_1.DeployCapabilitiesRegistry(owner, chain)
 		require.NoError(t, err)
 		chain.Commit()
-		tv, err := capreg_1_0_1.TypeAndVersion(nil)
+		tv, err := capreg.TypeAndVersion(nil)
 		require.NoError(t, err)
 		require.Equal(t, "CapabilitiesRegistry 1.0.1", tv)
 	})
 
 	t.Run("ocr3 capability v1_0_0", func(t *testing.T) {
-		_, _, ocr3_1_0_0, err := ocr3_1_0_0.DeployOCR3Capability(owner, chain)
+		_, _, ocr3, err := ocr3_1_0_0.DeployOCR3Capability(owner, chain)
 		require.NoError(t, err)
 		chain.Commit()
-		tv, err := ocr3_1_0_0.TypeAndVersion(nil)
+		tv, err := ocr3.TypeAndVersion(nil)
 		require.NoError(t, err)
 		require.Equal(t, "Keystone 1.0.0", tv)
 	})
@@ -46,5 +46,4 @@ func TestVersion(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "Forwarder and Router 1.0.0", tv)
 	})
-
 }
