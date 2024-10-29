@@ -93,6 +93,7 @@ func NewHandler(handlerConfig json.RawMessage, donConfig *config.DONConfig, don 
 	}
 
 	return &handler{
+		Validator:       capabilities.NewValidator[webapicap.TriggerConfig, struct{}, capabilities.TriggerResponse](capabilities.ValidatorArgs{}),
 		config:          cfg,
 		don:             don,
 		donConfig:       donConfig,
