@@ -831,6 +831,7 @@ func (o *OCRSoakTest) pollingOCREvents(endTest <-chan time.Time) error {
 	lastCheckedBlockNum := ^uint64(0)
 
 	go func() {
+		// TODO: Make this configurable
 		pollInterval := time.Second * 30
 		ticker := time.NewTicker(pollInterval)
 		defer ticker.Stop()
