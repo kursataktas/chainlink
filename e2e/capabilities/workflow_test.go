@@ -173,7 +173,7 @@ func TestWorkflow(t *testing.T) {
 			Build()
 		require.NoError(t, err)
 
-		nodeClients, err := clclient.NewCLCDefaultlients(nodeset.CLNodes, framework.L)
+		nodeClients, err := clclient.NewCLDefaultClients(nodeset.CLNodes, framework.L)
 		require.NoError(t, err)
 
 		fmt.Println("Setting up KV store capabilities...")
@@ -281,6 +281,5 @@ func TestWorkflow(t *testing.T) {
 		// 4.1. Add CRON capabilities
 		// 4.2. EVM target capabilities
 		// 5. TODOs: Have a workflow running and tested
-
 	})
 }

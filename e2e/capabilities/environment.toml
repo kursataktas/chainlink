@@ -18,15 +18,11 @@ image = "postgres:15.6"
 pull_image = true
 
 [nodeset.node_specs.node]
-image = "localhost:5050/local/chainlink:latest"
-# docker_file = "../../core/chainlink.Dockerfile"
-# docker_ctx = "../.."
-# docker_image_name = "chainlink"
-# pull_image = true
-
-# default directory inside container is "/capabilities/$binary_name"
+docker_file = "../../core/chainlink.Dockerfile"
+docker_ctx = "../.."
+docker_image_name = "chainlink"
+pull_image = true
 capabilities = ["./kvstore"]
-
 user_config_overrides = """
 [Feature]
 LogPoller = true
@@ -40,6 +36,4 @@ Enabled = true
 ListenAddresses = ['0.0.0.0:6690']
 """
 
-# [nodeset.node_spec.node]
-# image = "localhost:5050/local/chainlink"
-# tag = "latest"
+
