@@ -1833,13 +1833,16 @@ func TestIntegrationVRFV2(t *testing.T) {
 		linkWeiCharged.BigInt(),
 	})
 
-	// We should see the response count present
-	require.NoError(t, err)
-	var counts map[string]uint64
-	counts, err = listenerV2.GetStartingResponseCountsV2(ctx)
-	require.NoError(t, err)
-	t.Log(counts, rf[0].RequestID().String())
-	assert.Equal(t, uint64(1), counts[rf[0].RequestID().String()])
+	// We should see the response count present after receipt is fetched and stored for transaction
+	// Check periodically for receipt in case it is fetched and stored after more than 1 block
+	require.Eventually(t, func() bool {
+		uni.backend.Commit()
+		var counts map[string]uint64
+		counts, err = listenerV2.GetStartingResponseCountsV2(ctx)
+		require.NoError(t, err)
+		t.Log(counts, rf[0].RequestID().String())
+		return uint64(1) == counts[rf[0].RequestID().String()]
+	}, testutils.WaitTimeout(t), 1*time.Second)
 }
 
 func TestMaliciousConsumer(t *testing.T) {
