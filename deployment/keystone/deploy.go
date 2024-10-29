@@ -365,15 +365,9 @@ type registerCapabilitiesResponse struct {
 	donToCapabilities map[string][]RegisteredCapability
 }
 
-<<<<<<< HEAD
 type RegisteredCapability struct {
 	kcr.CapabilitiesRegistryCapability
 	ID [32]byte
-=======
-type registeredCapability struct {
-	kcr.CapabilitiesRegistryCapability
-	id [32]byte
->>>>>>> 33ac9c880f (pkg names)
 }
 
 // registerCapabilities add computes the capability id, adds it to the registry and associates the registered capabilities with appropriate don(s)
@@ -421,7 +415,6 @@ func registerCapabilities(lggr logger.Logger, req registerCapabilitiesRequest) (
 	return resp, nil
 }
 
-<<<<<<< HEAD
 type RegisterNOPSRequest struct {
 	Chain    deployment.Chain
 	Registry *kcr.CapabilitiesRegistry
@@ -430,16 +423,6 @@ type RegisterNOPSRequest struct {
 
 type RegisterNOPSResponse struct {
 	Nops []*kcr.CapabilitiesRegistryNodeOperatorAdded
-=======
-type registerNOPSRequest struct {
-	chain    deployment.Chain
-	registry *kcr.CapabilitiesRegistry
-	nops     []kcr.CapabilitiesRegistryNodeOperator
-}
-
-type registerNOPSResponse struct {
-	nops []*kcr.CapabilitiesRegistryNodeOperatorAdded
->>>>>>> 33ac9c880f (pkg names)
 }
 
 func RegisterNOPS(ctx context.Context, req RegisterNOPSRequest) (*RegisterNOPSResponse, error) {
@@ -463,13 +446,8 @@ func RegisterNOPS(ctx context.Context, req RegisterNOPSRequest) (*RegisterNOPSRe
 	if len(receipt.Logs) != len(nops) {
 		return nil, fmt.Errorf("expected %d log entries for AddNodeOperators, got %d", len(nops), len(receipt.Logs))
 	}
-<<<<<<< HEAD
 	resp := &RegisterNOPSResponse{
 		Nops: make([]*kcr.CapabilitiesRegistryNodeOperatorAdded, len(receipt.Logs)),
-=======
-	resp := &registerNOPSResponse{
-		nops: make([]*kcr.CapabilitiesRegistryNodeOperatorAdded, len(receipt.Logs)),
->>>>>>> 33ac9c880f (pkg names)
 	}
 	for i, log := range receipt.Logs {
 		o, err := req.Registry.ParseNodeOperatorAdded(*log)
@@ -546,11 +524,7 @@ type registerNodesRequest struct {
 	chain             deployment.Chain
 	nodeIdToNop       map[string]kcr.CapabilitiesRegistryNodeOperator
 	donToOcr2Nodes    map[string][]*ocr2Node
-<<<<<<< HEAD
 	donToCapabilities map[string][]RegisteredCapability
-=======
-	donToCapabilities map[string][]registeredCapability
->>>>>>> 33ac9c880f (pkg names)
 	nops              []*kcr.CapabilitiesRegistryNodeOperatorAdded
 }
 type registerNodesResponse struct {
@@ -682,11 +656,7 @@ type registerDonsRequest struct {
 	chain    deployment.Chain
 
 	nodeIDToParams    map[string]kcr.CapabilitiesRegistryNodeParams
-<<<<<<< HEAD
 	donToCapabilities map[string][]RegisteredCapability
-=======
-	donToCapabilities map[string][]registeredCapability
->>>>>>> 33ac9c880f (pkg names)
 	donToOcr2Nodes    map[string][]*ocr2Node
 }
 
@@ -746,11 +716,7 @@ func registerDons(lggr logger.Logger, req registerDonsRequest) (*registerDonsRes
 				return nil, fmt.Errorf("failed to marshal capability config for %v: %w", cap, err)
 			}
 			cfgs = append(cfgs, kcr.CapabilitiesRegistryCapabilityConfiguration{
-<<<<<<< HEAD
 				CapabilityId: cap.ID,
-=======
-				CapabilityId: cap.id,
->>>>>>> 33ac9c880f (pkg names)
 				Config:       cfgb,
 			})
 		}
