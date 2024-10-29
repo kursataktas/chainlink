@@ -464,11 +464,7 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.WrongNumberOfSignatures.selector);
 
-    bytes memory epochAndRound = abi.encodePacked(
-      bytes27(0),
-      epoch,
-      round
-    );
+    bytes memory epochAndRound = abi.encodePacked(bytes27(0), epoch, round);
 
     bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
     bytes memory report = new bytes(0);
@@ -483,11 +479,7 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.SignaturesOutOfRegistration.selector);
 
-    bytes memory epochAndRound = abi.encodePacked(
-      bytes27(0),
-      uint32(epoch),
-      uint32(round)
-    );
+    bytes memory epochAndRound = abi.encodePacked(bytes27(0), uint32(epoch), uint32(round));
     bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
     bytes memory report = new bytes(0);
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
@@ -501,11 +493,7 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.SignatureError.selector);
 
-    bytes memory epochAndRound = abi.encodePacked(
-      bytes27(0),
-      uint32(epoch),
-      uint32(round)
-    );
+    bytes memory epochAndRound = abi.encodePacked(bytes27(0), uint32(epoch), uint32(round));
     bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
     bytes memory report = new bytes(0);
     bytes32 rawVs = bytes32(abi.encodePacked("1"));
@@ -526,11 +514,7 @@ contract Trasmit is ConfiguredPrimaryAggregatorBaseTest {
     vm.startPrank(transmitters[0]);
     vm.expectRevert(PrimaryAggregator.DuplicateSigner.selector);
 
-    bytes memory epochAndRound = abi.encodePacked(
-      bytes27(0),
-      uint32(epoch),
-      uint32(round)
-    );
+    bytes memory epochAndRound = abi.encodePacked(bytes27(0), uint32(epoch), uint32(round));
     bytes32[3] memory reportContext = [configDigest, bytes32(epochAndRound), bytes32(abi.encodePacked("1"))];
     bytes memory report = new bytes(0);
 
@@ -615,7 +599,9 @@ contract LatestConfigDigestAndEpoch is TransmittedPrimaryAggregatorBaseTest {
         onchainConfig,
         offchainConfigVersion,
         offchainConfig
-      ), "configDigest incorrect");
+      ),
+      "configDigest incorrect"
+    );
     assertEq(epoch, 1, "epoch not correct");
   }
 }
