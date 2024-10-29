@@ -54,7 +54,7 @@ func TestDON(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
-	c, err := clclient.NewCLCDefaultlients(out.CLNodes, framework.L)
+	c, err := clclient.NewCLDefaultClients(out.CLNodes, framework.L)
 	require.NoError(t, err)
 	err = onchain.FundNodes(sc, c, pkey, in.FundingETH)
 	require.NoError(t, err)

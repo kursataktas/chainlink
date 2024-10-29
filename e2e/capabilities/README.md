@@ -41,11 +41,10 @@ go test -v -run TestDON
 ```
 
 ### Using local image and rebuilding it
-You can add `export CTF_BUILD_DOCKER_IMAGES=true` and configure you image in TOML:
+You can quickly rebuild a local image:
 ```
     [nodeset.node_specs.node]
-      image = "public.ecr.aws/chainlink/chainlink:v2.17.0" # this will be used without CTF_BUILD_DOCKER_IMAGES flag set
-      docker_file = "../../core/chainlink.Dockerfile"      # these are used when CTF_BUILD_DOCKER_IMAGES is present
+      docker_file = "../../core/chainlink.Dockerfile"
       docker_ctx = "../.."
       docker_image_name = "chainlink"
       pull_image = true
@@ -53,6 +52,8 @@ You can add `export CTF_BUILD_DOCKER_IMAGES=true` and configure you image in TOM
 Image will be published as `localhost:5050/$docker_image_name:latest` and used by framework.
 
 If you don't have a local registry the framework will spin it up for you (`registry:2` docker container).
+
+You can provide either `image` or `docker` fields to switch between local build and an existing image.
 
 ### Overriding configs
 You can override any configuration by providing more `TOML` files
