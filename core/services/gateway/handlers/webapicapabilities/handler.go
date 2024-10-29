@@ -41,8 +41,6 @@ type TriggersConfig struct {
 }
 
 type AllNodesTriggersConfig struct {
-	capabilities.Validator[map[string]webapicap.TriggerConfig, struct{}, capabilities.TriggerResponse]
-
 	// map of node address to node's triggerConfig
 	triggersConfigMap map[string]TriggersConfig
 }
@@ -104,7 +102,6 @@ func NewHandler(handlerConfig json.RawMessage, donConfig *config.DONConfig, don 
 		wg:              sync.WaitGroup{},
 		savedCallbacks:  make(map[string]*savedCallback),
 		triggersConfig: AllNodesTriggersConfig{
-			Validator:         capabilities.NewValidator[map[string]webapicap.TriggerConfig, struct{}, capabilities.TriggerResponse](capabilities.ValidatorArgs{}),
 			triggersConfigMap: make(map[string]TriggersConfig),
 		},
 	}, nil
@@ -231,6 +228,7 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 
 	var payload map[string]string
 	err := json.Unmarshal(body.Payload, &payload)
+	donID := body.DonId
 	if err != nil {
 		// errors here:
 		// error decoding payload	{"version": "unset@unset",
@@ -241,7 +239,8 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 		// close(callbackCh)
 		return err
 	}
-	for donID, configPbString := range payload {
+	triggersConfig := make(map[string]webapicap.TriggerConfig)
+	for triggerID, configPbString := range payload {
 		pbBytes, err := base64.StdEncoding.DecodeString(configPbString)
 		if err != nil {
 			h.lggr.Errorw("error decoding pb bytes", "err", err)
@@ -250,14 +249,29 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 		pb := &pb.Map{}
 		proto.Unmarshal(pbBytes, pb)
 		vmap, err := values.FromMapValueProto(pb)
-		reqConfig, err := h.triggersConfig.ValidateConfig(vmap)
+		if err != nil {
+			h.lggr.Errorw("error FromMapValueProto", "err", err)
+			return err
+		}
+		if vmap == nil {
+			h.lggr.Errorw("error FromMapValueProto nil vmap")
+			return err
+		}
+		h.lggr.Debugw("Decoding triggerConfig", "triggerId", triggerID, "config", vmap)
+		// Decoding triggerConfig	{"version": "unset@unset",
+		// "triggerId": "foo",
+		// "config": {"Underlying":{"AllowedSenders":{"Underlying":[{"Underlying":"0x853d51d5d9935964267a5050aC53aa63ECA39bc5"}]},"AllowedTopics":{"Underlying":[{"Underlying":"daily_price_update"},{"Underlying":"ad_hoc_price_update"}]},"RateLimiter":{"Underlying":{"GlobalBurst":{"Underlying":101},"GlobalRPS":{"Underlying":100},"PerSenderBurst":{"Underlying":103},"PerSenderRPS":{"Underlying":102}}},"RequiredParams":{"Underlying":[{"Underlying":"bid"},{"Underlying":"ask"}]}}}}
+
+		// seems ok to me...
+		reqConfig, err := h.ValidateConfig(vmap)
 		if err != nil {
 			h.lggr.Errorw("error validating config", "err", err)
 			return err
 		}
-
-		h.triggersConfig.triggersConfigMap[donID] = TriggersConfig{lastUpdatedAt: time.Now(), triggersConfig: *reqConfig}
+		triggersConfig[triggerID] = *reqConfig
 	}
+	h.triggersConfig.triggersConfigMap[donID] = TriggersConfig{lastUpdatedAt: time.Now(), triggersConfig: triggersConfig}
+
 	// h.updateTriggerConsensus()
 	return nil
 }

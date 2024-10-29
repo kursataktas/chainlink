@@ -323,18 +323,17 @@ func TestHandlerReceiveHTTPMessageFromClient(t *testing.T) {
 	// TODO: Validate Senders and rate limit chck, pending question in trigger about where senders and rate limits are validated
 }
 
-// function to convert values.Map to byte array
+// function to convert map of triggerIds to triggerConfigs (which is values.Map) to byte array
 func convertValuesMapToBytes(valuesMap map[string]*values.Map) []byte {
-	var workflowConfigs = make(map[string]string)
+	var workflowConfigsPB = make(map[string]string)
+	for key, triggerConfig := range valuesMap {
+		configProtoMap := values.ProtoMap(triggerConfig)
+		configProtoBytes, _ := proto.Marshal(configProtoMap)
+		encoded := base64.StdEncoding.EncodeToString(configProtoBytes)
+		workflowConfigsPB[key] = encoded
+	}
 
-	// not values.FromMapValueProto(valuesMap)
-	// convert valuesMap (map[string]*values.Map) to *pb.Map
-
-	configProtoMap := values.ProtoMap(valuesMap)
-	configProtoBytes, _ := proto.Marshal(configProtoMap)
-	encoded := base64.StdEncoding.EncodeToString(configProtoBytes)
-	workflowConfigs["testDonId"] = encoded
-	cfgBytes, _ := json.Marshal(workflowConfigs)
+	cfgBytes, _ := json.Marshal(workflowConfigsPB)
 	return cfgBytes
 }
 
