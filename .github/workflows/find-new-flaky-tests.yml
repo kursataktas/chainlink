@@ -210,11 +210,11 @@ jobs:
           go install ./pkg/chainlink/cmd/chainlink-starknet
           popd
 
-      - name: Change dir to project path
-        run: cd ${{ inputs.projectPath }}
-
       - name: Go mod tidy
-        run: go mod tidy
+        shell: bash
+        run: |
+          cd ${{ inputs.projectPath }}
+          go mod tidy
 
       - name: Generate random id
         id: gen_id
