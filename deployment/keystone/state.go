@@ -49,9 +49,6 @@ func loadContractSet(chain deployment.Chain, addresses map[string]deployment.Typ
 
 	for addr, tv := range addresses {
 		// todo handle versions
-		if !tv.Version.Equal(&deployment.Version1_0_0) {
-			return nil, fmt.Errorf("unsupported version %s", tv.Version.String())
-		}
 		switch tv.Type {
 		case CapabilitiesRegistry:
 			c, err := capabilities_registry.NewCapabilitiesRegistry(common.HexToAddress(addr), chain.Client)

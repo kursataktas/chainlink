@@ -63,7 +63,6 @@ func TypeAndVersionFromString(s string) (TypeAndVersion, error) {
 		return TypeAndVersion{}, err
 	}
 	return TypeAndVersion{
-		// replace spaces in original string with underscores
 		Type:    ContractType(strings.Join(parts[:len(parts)-1], " ")),
 		Version: *v,
 	}, nil
