@@ -250,7 +250,7 @@ func ethHeadToCommonHead(finalizedHead *evmtypes.Head) *commontypes.Head {
 	return &commontypes.Head{
 		Height: strconv.FormatInt(finalizedHead.Number, 10),
 		Hash:   finalizedHead.Hash.Bytes(),
-		//nolint:G115
+		//nolint:G115 // Timestamp is always positive
 		Timestamp: uint64(finalizedHead.Timestamp.Unix()),
 	}
 }
