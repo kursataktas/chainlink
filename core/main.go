@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"github.com/Masterminds/semver/v3"
@@ -26,6 +28,10 @@ func init() {
 }
 
 func Main() (code int) {
+	go func() {
+		log.Println("Starting pprof server on :6060")
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()
 	recovery.ReportPanics(func() {
 		app := cmd.NewApp(newProductionClient())
 		if err := app.Run(os.Args); err != nil {
