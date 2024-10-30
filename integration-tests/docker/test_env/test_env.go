@@ -194,10 +194,22 @@ func (te *ClusterTestEnv) StartRmnCluster(count int) error {
 	for i := 0; i < len(te.EVMNetworks); i++ {
 		net := te.EVMNetworks[i]
 
-		// TODO(pablo): this config is fairly arbitrary
+		// Kind of hacky, but we override the net name to match Balthazar's expectation based on the
+		// chain ID for the specific test IDs used. TODO: properly match Balthazar's expectations.
+		var name string
+		if net.ChainID == 1337 {
+			name = "DevnetAlpha"
+		} else if net.ChainID == 2337 {
+			name = "DevnetBeta"
+		} else if net.ChainID == 3337 {
+			name = "DevnetGamma"
+		} else {
+			name = net.Name
+		}
+
 		sharedChain := SharedChain{
 			// TODO(pablo): only limited names are allowed, unsure how to engage with simulated networks here.
-			Name:                         "Ethereum",
+			Name:                         name,
 			MaxTaggedRootsPerVoteToBless: 10,
 			AfnType:                      "V1_0",
 			// TODO work out the AFN contract address on this chain. This is a sepolia stub
@@ -232,7 +244,7 @@ func (te *ClusterTestEnv) StartRmnCluster(count int) error {
 
 		sharedConfig.Chains = append(sharedConfig.Chains, sharedChain)
 		localChain := Chain{
-			Name: "Ethereum",
+			Name: name,
 			RPCS: te.rpcProviders[net.ChainID].PrivateHttpUrls(),
 		}
 		localConfig.Chains = append(localConfig.Chains, localChain)
