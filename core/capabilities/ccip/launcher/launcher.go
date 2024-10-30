@@ -21,7 +21,7 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/services"
 
-	kcr "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/capabilities_registry_1_0_1"
+	kcr "github.com/smartcontractkit/chainlink/v2/core/gethwrappers/keystone/generated/capabilities_registry_1_1_0"
 )
 
 var (
