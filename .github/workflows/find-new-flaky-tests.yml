@@ -61,7 +61,7 @@ on:
 env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
   # Exclude paths other than main go project
-  EXCLUDE_PATHS: "integration-tests,dashboard-lib,chainlink-relay,tools/goreleaser-config"
+  EXCLUDE_PATHS: "integration-tests,dashboard-lib,chainlink-relay,tools/goreleaser-config,deployment"
 
 jobs:
   find-tests:
