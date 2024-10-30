@@ -6,7 +6,7 @@ import {ICapabilityConfiguration} from "../../keystone/interfaces/ICapabilityCon
 import {INodeInfoProvider} from "../../keystone/interfaces/INodeInfoProvider.sol";
 import {ITypeAndVersion} from "../../shared/interfaces/ITypeAndVersion.sol";
 
-import {OwnerIsCreator} from "../../shared/access/OwnerIsCreator.sol";
+import {Ownable2StepMsgSender} from "../../shared/access/Ownable2StepMsgSender.sol";
 import {Internal} from "../libraries/Internal.sol";
 
 import {IERC165} from "../../vendor/openzeppelin-solidity/v5.0.2/contracts/interfaces/IERC165.sol";
@@ -64,7 +64,7 @@ import {EnumerableSet} from "../../vendor/openzeppelin-solidity/v5.0.2/contracts
 ///       │             ├───────────────────►│             │
 ///       └─────────────┘    setSecondary    └─────────────┘
 ///
-contract CCIPHome is OwnerIsCreator, ITypeAndVersion, ICapabilityConfiguration, IERC165 {
+contract CCIPHome is Ownable2StepMsgSender, ITypeAndVersion, ICapabilityConfiguration, IERC165 {
   using EnumerableSet for EnumerableSet.UintSet;
 
   event ChainConfigRemoved(uint64 chainSelector);
@@ -93,13 +93,6 @@ contract CCIPHome is OwnerIsCreator, ITypeAndVersion, ICapabilityConfiguration, 
   error NoOpStateTransitionNotAllowed();
   error InvalidSelector(bytes4 selector);
   error DONIdMismatch(uint32 callDonId, uint32 capabilityRegistryDonId);
-
-  error InvalidStateTransition(
-    bytes32 currentActiveDigest,
-    bytes32 currentCandidateDigest,
-    bytes32 proposedActiveDigest,
-    bytes32 proposedCandidateDigest
-  );
 
   /// @notice Represents an oracle node in OCR3 configs part of the role DON.
   /// Every configured node should be a signer, but does not have to be a transmitter.
@@ -423,6 +416,7 @@ contract CCIPHome is OwnerIsCreator, ITypeAndVersion, ICapabilityConfiguration, 
     if (digestToRevoke != ZERO_DIGEST) {
       emit ActiveConfigRevoked(digestToRevoke);
     }
+
     emit ConfigPromoted(digestToPromote);
   }
 
@@ -438,7 +432,7 @@ contract CCIPHome is OwnerIsCreator, ITypeAndVersion, ICapabilityConfiguration, 
     uint32 version
   ) internal view returns (bytes32) {
     return bytes32(
-      (PREFIX & PREFIX_MASK)
+      PREFIX
         | (
           uint256(
             keccak256(
@@ -558,9 +552,8 @@ contract CCIPHome is OwnerIsCreator, ITypeAndVersion, ICapabilityConfiguration, 
 
     ChainConfigArgs[] memory paginatedChainConfigs = new ChainConfigArgs[](endIndex - startIndex);
 
-    uint256[] memory chainSelectors = s_remoteChainSelectors.values();
     for (uint256 i = startIndex; i < endIndex; ++i) {
-      uint64 chainSelector = uint64(chainSelectors[i]);
+      uint64 chainSelector = uint64(s_remoteChainSelectors.at(i));
       paginatedChainConfigs[i - startIndex] =
         ChainConfigArgs({chainSelector: chainSelector, chainConfig: s_chainConfigurations[chainSelector]});
     }

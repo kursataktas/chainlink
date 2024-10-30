@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import {IRouterClient} from "../interfaces/IRouterClient.sol";
 
-import {OwnerIsCreator} from "../../shared/access/OwnerIsCreator.sol";
+import {Ownable2StepMsgSender} from "../../shared/access/Ownable2StepMsgSender.sol";
 import {Client} from "../libraries/Client.sol";
 import {CCIPReceiver} from "./CCIPReceiver.sol";
 
@@ -22,7 +22,7 @@ import {IERC20} from "../../vendor/openzeppelin-solidity/v4.8.3/contracts/token/
 // like the example below will inherit the trust properties of CCIP (i.e. the oracle network).
 // @dev The receiver's are encoded offchain and passed as direct arguments to permit supporting
 // new chain family receivers (e.g. a Solana encoded receiver address) without upgrading.
-contract CCIPClientExample is CCIPReceiver, OwnerIsCreator {
+contract CCIPClientExample is CCIPReceiver, Ownable2StepMsgSender {
   error InvalidChain(uint64 chainSelector);
 
   event MessageSent(bytes32 messageId);
@@ -140,8 +140,8 @@ contract CCIPClientExample is CCIPReceiver, OwnerIsCreator {
     emit MessageSent(messageId);
   }
 
-  // @notice user sends tokens to a receiver
-  // Approvals can be optimized with a whitelist of tokens and inf approvals if desired.
+  /// @notice user sends tokens to a receiver
+  /// Approvals can be optimized with a whitelist of tokens and inf approvals if desired.
   function sendTokens(
     uint64 destChainSelector,
     bytes memory receiver,
