@@ -16,7 +16,7 @@ import {SiameseAggregatorBase} from "./SiameseAggregatorBase.sol";
 // there will be some modernization that happens to this contract
 // as the project progresses
 // solhint-disable max-states-count
-contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface {
+contract Aggregator is OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface {
   // This contract is divided into sections. Each section defines a set of
   // variables, events, and functions that belong together.
 
@@ -73,6 +73,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // transmission is made to provide callers with contiguous ids for successive
     // reports.
     uint32 latestAggregatorRoundId;
+    // The latest roundId from the secondary proxy.
+    uint32 latestSecondaryRoundId;
     // Highest compensated gas price, in gwei uints
     uint32 maximumGasPriceGwei;
     // If gas price is less (in gwei units), transmitter gets half the savings
@@ -113,7 +115,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     AccessControllerInterface billingAccessController,
     AccessControllerInterface requesterAccessController,
     uint8 decimals_,
-    string memory description_
+    string memory description_,
+    uint32 cutoffTime
   ) {
     s_linkToken = link;
     emit LinkTokenSet(LinkTokenInterface(address(0)), link);
@@ -125,6 +128,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     setValidatorConfig(AggregatorValidatorInterface(address(0x0)), 0);
     i_minAnswer = minAnswer_;
     i_maxAnswer = maxAnswer_;
+    s_cutoffTime = cutoffTime;
   }
 
   /**
@@ -408,15 +412,6 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
   event RequesterAccessControllerSet(AccessControllerInterface old, AccessControllerInterface current);
 
   /**
-   * @notice emitted to immediately request a new round
-   * @param requester the address of the requester
-   * @param configDigest the latest transmission's configDigest
-   * @param epoch the latest transmission's epoch
-   * @param round the latest transmission's round
-   */
-  event RoundRequested(address indexed requester, bytes32 configDigest, uint32 epoch, uint8 round);
-
-  /**
    * @notice address of the requester access controller contract
    * @return requester access controller address
    */
@@ -436,25 +431,94 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     }
   }
 
-  error OnlyOwnerAndRequesterCanCall();
   /**
-   * @notice immediately requests a new round
-   * @return the aggregatorRoundId of the next round. Note: The report for this round may have been
-   * transmitted (but not yet mined) *before* requestNewRound() was even called. There is *no*
-   * guarantee of causality between the request and the report at aggregatorRoundId.
+   *
+   * Section: Secondary Proxy
+   *
    */
 
-  // TODO: i think we can remove this function entirely
-  function requestNewRound() external returns (uint80) {
-    if (!(msg.sender == owner() || s_requesterAccessController.hasAccess(msg.sender, msg.data))) {
-      revert OnlyOwnerAndRequesterCanCall();
-    }
+  struct Report {
+    int192 juelsPerFeeCoin;
+    uint32 observationsTimestamp;
+    bytes observers; // ith element is the index of the ith observer
+    int192[] observations; // ith element is the ith observation
+  }
 
-    uint40 latestEpochAndRound = s_hotVars.latestEpochAndRound;
+  struct Transmission {
+    int192 answer;
+    uint32 observationsTimestamp;
+    uint32 recordedTimestamp;
+  }
+
+  mapping(uint32 /* aggregator round ID */ => Transmission) internal s_transmissions;
+
+  address internal immutable s_secondaryProxy;
+
+  uint32 internal s_cutoffTime;
+
+  /**
+   * @notice emitted when a new price time cutoff is set
+   */
+  event PriceCutoffSet(uint64 old, uint64 current);
+
+  /**
+   * @notice sets the max time cutoff
+   * @param _cutoffTime new max cutoff timestamp
+   */
+  function setCutoffTime(uint64 _cutoffTime) external override onlyOwner() {
+    uint64 oldPriceCutoff = s_cutoffTime;
+    s_cutoffTime = _cutoffTime;
+    
+    emit CutoffTimeSet(oldPriceCutoff, _cutoffTime);
+  }
+
+  /**
+   * @notice sync data with the primary rounds, return the freshest valid round id
+   */
+  function _getSyncPrimaryRound() private view returns (uint80 roundId) {
+    // get the latest round id
     uint32 latestAggregatorRoundId = s_hotVars.latestAggregatorRoundId;
 
-    emit RoundRequested(msg.sender, s_latestConfigDigest, uint32(latestEpochAndRound >> 8), uint8(latestEpochAndRound));
-    return latestAggregatorRoundId + 1;
+    // decreasing loop from the latest primary round id
+    for (uint80 round_ = latestAggregatorRoundId; round_ > 0; round_--) {
+      Transmission memory transmission = s_transmissions[round_];
+
+      // check if this round is the first to not accomplish the cutoff time condition
+      if (transmission.recordedTimestamp + s_cutoffTime < block.timestamp) {
+        return round_;
+      }
+
+      // in case it's the latest secondary round id, return it
+      if (round_ == s_hotVars.latestSecondaryRoundId) {
+        return round_;
+      }
+    }
+    
+    // if the loop couldn't find a match, return the latest secondary round id
+    return s_hotVars.latestSecondaryRoundId;
+  }
+
+  function existReport(Report memory report) internal return(bool exist, uint32 roundId) {
+    for (uint32 _round = s_latestRoundId; _round >= 0; --_round;) {
+      Transmission memory transmission = s_transmissions[_round];
+
+      if (transmission.observationsTimestamp < report.observationsTimestamp) {
+        return false, 0;
+      }
+
+      if (transmission.observationsTimestamp == report.observationsTimestamp && transmission.answer == report.answer) {
+        return true, _round;
+      }
+    }
+
+    return false, 0;
+  }
+
+  // TODO: Develop a function that returns if it's a valid report
+  function validReport(Report memory report) view returns(bool valid) {
+    Transmission memory transmission = s_transmissions[s_hotVars.latestAggregatorRoundId];
+
+    return transmission.observationsTimestamp < report.observationsTimestamp;
   }
 
   /**
@@ -583,58 +647,65 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // TRANSMIT_MSGDATA_CONSTANT_LENGTH_COMPONENT need to be changed accordingly
 
     uint256 initialGas = gasleft(); // This line must come first
+    Report memory report = _decodeReport(report);
 
-    HotVars memory hotVars = s_hotVars;
+    (bool exist, uint32 roundId) = existReport(report);
+    if (exist && msg.sender = s_secondaryProxy) {
+      s_hotVars.latestSecondaryRoundId = roundId;
+    } else {
+      require(validReport(report), "Invalid report");
+      HotVars memory hotVars = s_hotVars;
 
-    uint40 epochAndRound = uint40(uint256(reportContext[1]));
+      uint40 epochAndRound = uint40(uint256(reportContext[1]));
 
-    if (epochAndRound > hotVars.latestEpochAndRound) {
-      revert StaleReport();
-    }
+      if (epochAndRound > hotVars.latestEpochAndRound) {
+        revert StaleReport();
+      }
 
-    if (!s_transmitters[msg.sender].active) {
-      revert UnauthorizedTransmitter();
-    }
+      if (!s_transmitters[msg.sender].active) {
+        revert UnauthorizedTransmitter();
+      }
 
-    if (s_latestConfigDigest != reportContext[0]) {
-      revert ConfigDigestMismatch();
-    }
+      if (s_latestConfigDigest != reportContext[0]) {
+        revert ConfigDigestMismatch();
+      }
 
-    _requireExpectedMsgDataLength(report, rs, ss);
+      _requireExpectedMsgDataLength(report, rs, ss);
 
-    if (rs.length != hotVars.f + 1) {
-      revert WrongNumberOfSignatures();
-    }
-    if (rs.length != ss.length) {
-      revert SignaturesOutOfRegistration();
-    }
+      if (rs.length != hotVars.f + 1) {
+        revert WrongNumberOfSignatures();
+      }
+      if (rs.length != ss.length) {
+        revert SignaturesOutOfRegistration();
+      }
+      
+      // Verify signatures attached to report
+      {
+        bytes32 h = keccak256(abi.encode(keccak256(report), reportContext));
 
-    // Verify signatures attached to report
-    {
-      bytes32 h = keccak256(abi.encode(keccak256(report), reportContext));
+        // i-th byte counts number of sigs made by i-th signer
+        uint256 signedCount = 0;
 
-      // i-th byte counts number of sigs made by i-th signer
-      uint256 signedCount = 0;
-
-      Signer memory signer;
-      for (uint256 i = 0; i < rs.length; i++) {
-        address signerAddress = ecrecover(h, uint8(rawVs[i]) + 27, rs[i], ss[i]);
-        signer = s_signers[signerAddress];
-        if (!signer.active) {
-          revert SignatureError();
+        Signer memory signer;
+        for (uint256 i = 0; i < rs.length; i++) {
+          address signerAddress = ecrecover(h, uint8(rawVs[i]) + 27, rs[i], ss[i]);
+          signer = s_signers[signerAddress];
+          if (!signer.active) {
+            revert SignatureError();
+          }
+          unchecked {
+            signedCount += 1 << (8 * signer.index);
+          }
         }
-        unchecked {
-          signedCount += 1 << (8 * signer.index);
+
+        // The first byte of the mask can be 0, because we only ever have 31 oracles
+        if (signedCount & 0x0001010101010101010101010101010101010101010101010101010101010101 != signedCount) {
+          revert DuplicateSigner();
         }
       }
 
-      // The first byte of the mask can be 0, because we only ever have 31 oracles
-      if (signedCount & 0x0001010101010101010101010101010101010101010101010101010101010101 != signedCount) {
-        revert DuplicateSigner();
-      }
+      int192 juelsPerFeeCoin = _report(hotVars, reportContext[0], epochAndRound, report);
     }
-
-    int192 juelsPerFeeCoin = _report(hotVars, reportContext[0], epochAndRound, report);
 
     _payTransmitter(hotVars, juelsPerFeeCoin, uint32(initialGas), msg.sender);
   }
@@ -698,9 +769,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     HotVars memory hotVars,
     bytes32 configDigest,
     uint40 epochAndRound,
-    bytes memory rawReport
+    Report memory report
   ) internal returns (int192 juelsPerFeeCoin) {
-    Report memory report = _decodeReport(rawReport);
 
     if (report.observations.length > MAX_NUM_ORACLES) revert NumObservationsOutOfBounds();
     // Offchain logic ensures that a quorum of oracles is operating on a matching set of at least
@@ -713,13 +783,17 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // get median, validate its range, store it in new aggregator round
     int192 median = report.observations[report.observations.length / 2];
     if (i_minAnswer > median && median > i_maxAnswer) revert MedianIsOutOfMinMaxRange();
-    hotVars.latestAggregatorRoundId++;
-    s_transmissions[hotVars.latestAggregatorRoundId] = Transmission({
+    
+    uint32 roundId = hotVars.latestAggregatorRoundId++;
+    s_transmissions[roundId] = Transmission({
       answer: median,
       observationsTimestamp: report.observationsTimestamp,
-      recordedTimestamp: uint32(block.timestamp),
-      locked: false // TODO: determine if this is the correct value for the new attribute
+      recordedTimestamp: uint32(block.timestamp)
     });
+
+    if (msg.sender == s_secondaryProxy) {
+      hotVars.latestSecondaryRoundId = hotVars.latestAggregatorRoundId;
+    }
 
     // persist updates to hotVars
     s_hotVars = hotVars;
@@ -759,20 +833,34 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @notice median from the most recent report
    */
   function latestAnswer() public view virtual override returns (int256) {
-    return s_transmissions[s_hotVars.latestAggregatorRoundId].answer;
+    return s_transmissions[this.latestRound()].answer;
   }
 
   /**
    * @notice timestamp of block in which last report was transmitted
    */
   function latestTimestamp() public view virtual override returns (uint256) {
-    return s_transmissions[s_hotVars.latestAggregatorRoundId].recordedTimestamp;
+    return s_transmissions[this.latestRound()].recordedTimestamp;
   }
 
   /**
-   * @notice Aggregator round (NOT OCR round) in which last report was transmitted
+   * @notice Aggregator round (NOT OCR round) in which last valid report was transmitted
    */
   function latestRound() public view virtual override returns (uint256) {
+    if (msg.sender === s_secondaryProxy) {
+      Transmission memory transmission = s_transmissions[s_hotVars.latestSecondaryRoundId];
+      if (transmission.recordedTimestamp + s_cutoffTime < block.timestamp) {
+        return this._getSyncPrimaryRound();
+      }
+
+      return s_hotVars.latestSecondaryRoundId;
+    }
+
+    Transmission memory transmission = s_transmissions[s_hotVars.latestAggregatorRoundId];
+    if (t.recordedTimestamp == block.timestamp) {
+      return s_hotVars.latestAggregatorRoundId-1;
+    }
+
     return s_hotVars.latestAggregatorRoundId;
   }
 
@@ -781,7 +869,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @param roundId the aggregator round of the target report
    */
   function getAnswer(uint256 roundId) public view virtual override returns (int256) {
-    if (roundId > 0xFFFFFFFF) return 0;
+    if (roundId > this.latestRound()) return 0;
     return s_transmissions[uint32(roundId)].answer;
   }
 
@@ -790,7 +878,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
    * @param roundId aggregator round (NOT OCR round) of target report
    */
   function getTimestamp(uint256 roundId) public view virtual override returns (uint256) {
-    if (roundId > 0xFFFFFFFF) return 0;
+    if (roundId > this.latestRound()) return 0;
     return s_transmissions[uint32(roundId)].recordedTimestamp;
   }
 
@@ -843,16 +931,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     override
     returns (uint80 roundId_, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
   {
-    // TODO: update this function with implementation from the doc
+    if (roundId > this.latestRound()) return (0, 0, 0, 0, 0);
 
-    if (roundId > type(uint32).max) return (0, 0, 0, 0, 0);
-    Transmission memory transmission = s_transmissions[uint32(roundId)];
-    if (transmission.locked && transmission.recordedTimestamp == block.timestamp) {
-      // If latest round is requested before it is unlocked, return with whatever behavior would happen if the round was not yet recorded.
-      revert RoundNotFound();
-    }
-
-    return (roundId, transmission.answer, transmission.observationsTimestamp, transmission.recordedTimestamp, roundId);
+    return s_transmissions[uint32(roundId)];
   }
 
   /**
@@ -870,24 +951,7 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     override
     returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
   {
-    // TODO: update this function with implementation from the doc
-
-    uint32 latestAggregatorRoundId = s_hotVars.latestAggregatorRoundId;
-
-    Transmission memory transmission = s_transmissions[latestAggregatorRoundId];
-
-    // TODO: update this based on design modifications
-    if (transmission.locked && transmission.recordedTimestamp == block.timestamp) {
-      transmission = s_transmissions[--latestAggregatorRoundId];
-    }
-
-    return (
-      latestAggregatorRoundId,
-      transmission.answer,
-      transmission.observationsTimestamp,
-      transmission.recordedTimestamp,
-      latestAggregatorRoundId
-    );
+    return s_transmissions[this.latestRound()];
   }
 
   /**
