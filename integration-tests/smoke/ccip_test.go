@@ -8,15 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
-	"github.com/smartcontractkit/chainlink/integration-tests/deployment"
+	"github.com/smartcontractkit/chainlink/integration-tests/ccip-tests/actions"
 
 	"github.com/smartcontractkit/chainlink-ccip/pluginconfig"
 	commonconfig "github.com/smartcontractkit/chainlink-common/pkg/config"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
-	"github.com/smartcontractkit/chainlink/integration-tests/ccip-tests/actions"
-	ccdeploy "github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
-	"github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip/changeset"
+
+	"github.com/smartcontractkit/chainlink/deployment"
+	ccdeploy "github.com/smartcontractkit/chainlink/deployment/ccip"
+	"github.com/smartcontractkit/chainlink/deployment/ccip/changeset"
+	"github.com/smartcontractkit/chainlink/integration-tests/ccip-tests/testsetups"
 
 	jobv1 "github.com/smartcontractkit/chainlink-protos/job-distributor/v1/job"
 	"github.com/smartcontractkit/chainlink/v2/core/gethwrappers/ccip/generated/router"
@@ -27,7 +29,7 @@ import (
 func TestInitialDeployOnLocal(t *testing.T) {
 	lggr := logger.TestLogger(t)
 	ctx := ccdeploy.Context(t)
-	tenv, _, _ := ccdeploy.NewLocalDevEnvironment(t, lggr)
+	tenv, _, _ := testsetups.NewLocalDevEnvironment(t, lggr)
 	e := tenv.Env
 
 	state, err := ccdeploy.LoadOnchainState(tenv.Env, tenv.Ab)
@@ -89,7 +91,7 @@ func TestInitialDeployOnLocal(t *testing.T) {
 			require.NoError(t, err)
 			block := latesthdr.Number.Uint64()
 			startBlocks[dest] = &block
-			seqNum := ccdeploy.SendRequest(t, e, state, src, dest, false, nil)
+			seqNum := ccdeploy.TestSendRequest(t, e, state, src, dest, false, nil)
 			expectedSeqNum[dest] = seqNum
 		}
 	}
@@ -115,7 +117,7 @@ func TestInitialDeployOnLocal(t *testing.T) {
 func TestUSDCTokenTransfer(t *testing.T) {
 	lggr := logger.TestLogger(t)
 	ctx := ccdeploy.Context(t)
-	tenv, _, _ := ccdeploy.NewLocalDevEnvironment(t, lggr)
+	tenv, _, _ := testsetups.NewLocalDevEnvironment(t, lggr)
 	e := tenv.Env
 	// if it's a new USDC deployment, set up mock server for attestation,
 	// we need to set it only once for all the lanes as the attestation path uses regex to match the path for
@@ -198,7 +200,7 @@ func TestUSDCTokenTransfer(t *testing.T) {
 	// approve tokens
 
 	tx, err := homeChainUSDCtoken.Approve(tenv.Env.Chains[tenv.HomeChainSel].DeployerKey, state.Chains[tenv.HomeChainSel].Router.Address(), oneCoin)
-	
+
 	require.NoError(t, err, "failed to approve USDC tokens in home chain")
 	_, err = tenv.Env.Chains[tenv.HomeChainSel].Confirm(tx)
 	require.NoError(t, err, "failed to confirm USDC token approval in home chain")
@@ -228,7 +230,7 @@ func TestUSDCTokenTransfer(t *testing.T) {
 			startBlocks[dest] = &block
 			_ = tokens[src]
 
-			seqNum := ccdeploy.SendRequest(t, e, state, src, dest, false, tokens[src])
+			seqNum := ccdeploy.TestSendRequest(t, e, state, src, dest, false, tokens[src])
 			expectedSeqNum[dest] = seqNum
 		}
 	}
