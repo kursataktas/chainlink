@@ -61,6 +61,7 @@ BlockHistoryPollPeriod = '5s'
 ComputeUnitLimitDefault = 200000
 EstimateComputeUnitLimit = false
 Nodes = []
+BlockHistorySize = 1
 
 [MultiNode]
 Enabled = false

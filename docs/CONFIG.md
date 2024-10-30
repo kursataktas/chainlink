@@ -10065,6 +10065,7 @@ FeeBumpPeriod = '3s' # Default
 BlockHistoryPollPeriod = '5s' # Default
 ComputeUnitLimitDefault = 200_000 # Default
 EstimateComputeUnitLimit = false # Default
+BlockHistorySize = 1 # Default
 ```
 
 
@@ -10188,6 +10189,14 @@ ComputeUnitLimitDefault is the compute units limit applied to transactions unles
 EstimateComputeUnitLimit = false # Default
 ```
 EstimateComputeUnitLimit enables or disables compute unit limit estimations per transaction. If estimations return 0 used compute, the ComputeUnitLimitDefault value is used, if set.
+
+### BlockHistorySize
+```toml
+BlockHistorySize = 1 # Default
+```
+BlockHistorySize is the number of blocks to take into consideration when using FeeEstimatorMode = 'blockhistory' to determine compute unit price.
+If set to 1, LatestBlockEstimator will be used. The compute unit price will be determined by the median of the last block's compute unit prices. 
+If set N > 1, MultipleBlocksEstimator will be used. The compute unit price will be determined by the average of the medians of the last N blocks' compute unit prices.
 
 ## Solana.MultiNode
 ```toml
