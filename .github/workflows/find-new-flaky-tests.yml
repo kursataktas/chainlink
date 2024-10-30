@@ -84,7 +84,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@c706391933d1adfaf2fbeee7d8ddeeb3a6ac4b1d
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@6a64eec6619c8a7fab76f03e01d954b625fc6908
 
       - name: Find new or updated test packages
         id: find-tests
@@ -222,11 +222,11 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@c706391933d1adfaf2fbeee7d8ddeeb3a6ac4b1d
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@6a64eec6619c8a7fab76f03e01d954b625fc6908
 
       - name: Run tests with flakeguard
         shell: bash
-        run: flakeguard run --test-packages=${{ matrix.testPackages }} --run-count=${{ inputs.runCount }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --output-json=test-result.json
+        run: flakeguard run --project-path=${{ inputs.projectPath }} --test-packages=${{ matrix.testPackages }} --run-count=${{ inputs.runCount }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --output-json=test-result.json
         env:
           CL_DATABASE_URL: ${{ env.DB_URL }}
 
