@@ -60,8 +60,8 @@ FeeBumpPeriod = '3s'
 BlockHistoryPollPeriod = '5s'
 ComputeUnitLimitDefault = 200000
 EstimateComputeUnitLimit = false
-Nodes = []
 BlockHistorySize = 1
+Nodes = []
 
 [MultiNode]
 Enabled = false
