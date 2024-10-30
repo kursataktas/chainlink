@@ -213,11 +213,8 @@ jobs:
       - name: Change dir to project path
         run: cd ${{ inputs.projectPath }}
 
-      - name: Download Go vendor packages
-        run: go mod download
-
-      - name: Clean test cache
-        run: go clean -testcache
+      - name: Go mod tidy
+        run: go mod tidy
 
       - name: Generate random id
         id: gen_id
