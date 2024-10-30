@@ -489,9 +489,9 @@ contract PrimaryAggregator OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface
   uint32 internal s_cutoffTime;
 
   /**
-   * @notice emitted when a new price time cutoff is set
+   * @notice emitted when a new cutoxx time is set
    */
-  event PriceCutoffSet(uint64 old, uint64 current);
+  event CutoffTimeSet(uint64 old, uint64 current);
 
   /**
    * @notice sets the max time cutoff
