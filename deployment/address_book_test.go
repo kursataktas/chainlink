@@ -2,8 +2,10 @@ package deployment
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/ethereum/go-ethereum/common"
 	chainsel "github.com/smartcontractkit/chain-selectors"
 	"github.com/stretchr/testify/require"
@@ -117,4 +119,55 @@ func TestAddressBook_Merge(t *testing.T) {
 			addr1: onRamp110,
 		},
 	})
+}
+
+func TestTypeAndVersionFromString(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    TypeAndVersion
+		wantErr bool
+	}{
+		{
+			name: "valid",
+			args: args{s: "OCRContract 1.0.0"},
+			want: TypeAndVersion{
+				Type:    ContractType("OCRContract"),
+				Version: *semver.MustParse("1.0.0"),
+			},
+		},
+
+		{
+			name: "spaces trimmed",
+			args: args{s: "OCRContract    1.0.0"},
+			want: TypeAndVersion{
+				Type:    ContractType("OCRContract"),
+				Version: *semver.MustParse("1.0.0"),
+			},
+		},
+
+		{
+			name: "name with spaces",
+			args: args{s: "OCR Contract    1.0.0"},
+			want: TypeAndVersion{
+				Type:    ContractType("OCR Contract"),
+				Version: *semver.MustParse("1.0.0"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := TypeAndVersionFromString(tt.args.s)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TypeAndVersionFromString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TypeAndVersionFromString() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }

@@ -24,12 +24,17 @@ func TestDeployForwarder(t *testing.T) {
 	}
 	env := memory.NewMemoryEnvironment(t, lggr, zapcore.DebugLevel, cfg)
 
+	var (
+		ocrTV = deployment.NewTypeAndVersion(kslb.OCR3Capability, deployment.Version1_0_0)
+		crTV  = deployment.NewTypeAndVersion(kslb.CapabilitiesRegistry, deployment.Version1_0_0)
+	)
+
 	registrySel := env.AllChainSelectors()[0]
 	t.Run("err if no capabilities registry on registry chain", func(t *testing.T) {
 		ab := deployment.NewMemoryAddressBook()
 		m := make(map[uint64]map[string]deployment.TypeAndVersion)
 		m[registrySel] = map[string]deployment.TypeAndVersion{
-			"0x0000000000000000000000000000000000000002": kslb.OCR3CapabilityTypeVersion,
+			"0x0000000000000000000000000000000000000002": ocrTV,
 		}
 		deployment.NewMemoryAddressBookFromMap(m)
 		// capabilities registry and ocr3 must be deployed on registry chain
@@ -41,7 +46,7 @@ func TestDeployForwarder(t *testing.T) {
 		ab := deployment.NewMemoryAddressBook()
 		m := make(map[uint64]map[string]deployment.TypeAndVersion)
 		m[registrySel] = map[string]deployment.TypeAndVersion{
-			"0x0000000000000000000000000000000000000001": kslb.CapabilityRegistryTypeVersion,
+			"0x0000000000000000000000000000000000000001": crTV,
 		}
 		deployment.NewMemoryAddressBookFromMap(m)
 		// capabilities registry and ocr3 must be deployed on registry chain
@@ -52,11 +57,11 @@ func TestDeployForwarder(t *testing.T) {
 	t.Run("should deploy forwarder", func(t *testing.T) {
 		ab := deployment.NewMemoryAddressBook()
 		// fake capabilities registry
-		err := ab.Save(registrySel, "0x0000000000000000000000000000000000000001", kslb.CapabilityRegistryTypeVersion)
+		err := ab.Save(registrySel, "0x0000000000000000000000000000000000000001", crTV)
 		require.NoError(t, err)
 
 		// fake ocr3
-		err = ab.Save(registrySel, "0x0000000000000000000000000000000000000002", kslb.OCR3CapabilityTypeVersion)
+		err = ab.Save(registrySel, "0x0000000000000000000000000000000000000002", ocrTV)
 		require.NoError(t, err)
 		// deploy forwarder
 		resp, err := changeset.DeployForwarder(lggr, env, ab, registrySel)

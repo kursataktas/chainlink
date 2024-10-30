@@ -51,16 +51,20 @@ func MustTypeAndVersionFromString(s string) TypeAndVersion {
 // Note this will become useful for validation. When we want
 // to assert an onchain call to typeAndVersion yields whats expected.
 func TypeAndVersionFromString(s string) (TypeAndVersion, error) {
+	// standardize spaces
+	s = strings.Join(strings.Fields(s), " ")
+
 	parts := strings.Split(s, " ")
-	if len(parts) != 2 {
-		return TypeAndVersion{}, fmt.Errorf("invalid type and version string: %s", s)
+	if len(parts) < 2 {
+		return TypeAndVersion{}, fmt.Errorf("invalid type and version string: '%s'", s)
 	}
-	v, err := semver.NewVersion(parts[1])
+	v, err := semver.NewVersion(parts[len(parts)-1])
 	if err != nil {
 		return TypeAndVersion{}, err
 	}
 	return TypeAndVersion{
-		Type:    ContractType(parts[0]),
+		// replace spaces in original string with underscores
+		Type:    ContractType(strings.Join(parts[:len(parts)-1], " ")),
 		Version: *v,
 	}, nil
 }
