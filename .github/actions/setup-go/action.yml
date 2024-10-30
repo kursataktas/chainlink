@@ -87,7 +87,7 @@ runs:
           ${{ steps.go-cache-dir.outputs.gobuildcache }}
         key: ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-${{ steps.branch-name.outputs.current_branch }}
         restore-keys: |
-          ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-develop
+          ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-feat/optimize-ci-core-cache
           ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-
           ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-
           ${{ runner.os }}-gobuild-${{ inputs.cache-version }}-
@@ -102,7 +102,7 @@ runs:
         # The lifetime of go build outputs is pretty short, so we make our primary cache key be the branch name
         key: ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-${{ steps.branch-name.outputs.current_branch }}
         restore-keys: |
-          ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-develop
+          ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-feat/optimize-ci-core-cache
           ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}-
           ${{ runner.os }}-gobuild-${{ inputs.build-cache-version || inputs.cache-version }}-
           ${{ runner.os }}-gobuild-${{ inputs.cache-version }}-
