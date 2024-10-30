@@ -16,7 +16,7 @@ import {SiameseAggregatorBase} from "./SiameseAggregatorBase.sol";
 // there will be some modernization that happens to this contract
 // as the project progresses
 // solhint-disable max-states-count
-contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface {
+contract PrimaryAggregator OCR2Abstract, OwnerIsCreator, AggregatorV2V3Interface {
   // This contract is divided into sections. Each section defines a set of
   // variables, events, and functions that belong together.
 
@@ -73,6 +73,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     // transmission is made to provide callers with contiguous ids for successive
     // reports.
     uint32 latestAggregatorRoundId;
+    // latest transmission round arrived from the Secondary Proxy.
+    uint32 latestSecondaryRoundId;
     // Highest compensated gas price, in gwei uints
     uint32 maximumGasPriceGwei;
     // If gas price is less (in gwei units), transmitter gets half the savings
@@ -113,7 +115,9 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     AccessControllerInterface billingAccessController,
     AccessControllerInterface requesterAccessController,
     uint8 decimals_,
-    string memory description_
+    string memory description_,
+    address secondaryProxy,
+    uint32 cutoffTime
   ) {
     s_linkToken = link;
     emit LinkTokenSet(LinkTokenInterface(address(0)), link);
@@ -125,6 +129,8 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
     setValidatorConfig(AggregatorValidatorInterface(address(0x0)), 0);
     i_minAnswer = minAnswer_;
     i_maxAnswer = maxAnswer_;
+    s_secondaryProxy = secondaryProxy;
+    s_cutoffTime = cutoffTime;
   }
 
   /**
@@ -455,6 +461,73 @@ contract PrimaryAggregator is SiameseAggregatorBase, OCR2Abstract, OwnerIsCreato
 
     emit RoundRequested(msg.sender, s_latestConfigDigest, uint32(latestEpochAndRound >> 8), uint8(latestEpochAndRound));
     return latestAggregatorRoundId + 1;
+  }
+
+  /**
+   *
+   * Section: Secondary Proxy
+   *
+   */
+
+  struct Report {
+    int192 juelsPerFeeCoin;
+    uint32 observationsTimestamp;
+    bytes observers; // ith element is the index of the ith observer
+    int192[] observations; // ith element is the ith observation
+  }
+
+  struct Transmission {
+    int192 answer;
+    uint32 observationsTimestamp;
+    uint32 recordedTimestamp;
+  }
+
+  mapping(uint32 /* aggregator round ID */ => Transmission) internal s_transmissions;
+
+  address internal immutable s_secondaryProxy;
+
+  uint32 internal s_cutoffTime;
+
+  /**
+   * @notice emitted when a new price time cutoff is set
+   */
+  event PriceCutoffSet(uint64 old, uint64 current);
+
+  /**
+   * @notice sets the max time cutoff
+   * @param _cutoffTime new max cutoff timestamp
+   */
+  function setCutoffTime(uint64 _cutoffTime) external override onlyOwner() {
+    uint64 oldPriceCutoff = s_cutoffTime;
+    s_cutoffTime = _cutoffTime;
+    
+    emit CutoffTimeSet(oldPriceCutoff, _cutoffTime);
+  }
+
+  /**
+   * @notice sync data with the primary rounds, return the freshest valid round id
+   */
+  function _getSyncPrimaryRound() private view returns (uint80 roundId) {
+    // get the latest round id
+    uint32 latestAggregatorRoundId = s_hotVars.latestAggregatorRoundId;
+
+    // decreasing loop from the latest primary round id
+    for (uint80 round_ = latestAggregatorRoundId; round_ > 0; round_--) {
+      Transmission memory transmission = s_transmissions[round_];
+
+      // check if this round is the first to not accomplish the cutoff time condition
+      if (transmission.recordedTimestamp + s_cutoffTime < block.timestamp) {
+        return round_;
+      }
+
+      // in case it's the latest secondary round id, return it
+      if (round_ == s_hotVars.latestSecondaryRoundId) {
+        return round_;
+      }
+    }
+    
+    // if the loop couldn't find a match, return the latest secondary round id
+    return s_hotVars.latestSecondaryRoundId;
   }
 
   /**
