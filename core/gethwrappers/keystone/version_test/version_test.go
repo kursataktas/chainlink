@@ -26,7 +26,7 @@ func TestVersion(t *testing.T) {
 		chain.Commit()
 		tv, err := capreg.TypeAndVersion(nil)
 		require.NoError(t, err)
-		require.Equal(t, "CapabilitiesRegistry 1.0.1", tv)
+		require.Equal(t, "CapabilitiesRegistry 1.1.0", tv)
 	})
 
 	t.Run("ocr3 capability v1_0_0", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestVersion(t *testing.T) {
 		chain.Commit()
 		tv, err := ocr3.TypeAndVersion(nil)
 		require.NoError(t, err)
-		require.Equal(t, "Keystone 1.0.0", tv)
+		require.Equal(t, "OCR3Capability 1.0.0", tv)
 	})
 
 	t.Run("forwarder v1_0_0", func(t *testing.T) {
@@ -44,6 +44,6 @@ func TestVersion(t *testing.T) {
 		chain.Commit()
 		tv, err := forwarder.TypeAndVersion(nil)
 		require.NoError(t, err)
-		require.Equal(t, "Forwarder and Router 1.0.0", tv)
+		require.Equal(t, "KeystoneForwarder 1.0.0", tv)
 	})
 }
