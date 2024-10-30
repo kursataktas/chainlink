@@ -1,4 +1,4 @@
-GETH_VERSION: 1.14.7
+GETH_VERSION: 1.14.11
 capabilities_registry: ../../../contracts/solc/v0.8.24/CapabilitiesRegistry/CapabilitiesRegistry.abi ../../../contracts/solc/v0.8.24/CapabilitiesRegistry/CapabilitiesRegistry.bin 1250614381238d54ec35070c4eaed2884d6fba28ebb75e890600c820e44fc98c
 feeds_consumer: ../../../contracts/solc/v0.8.24/KeystoneFeedsConsumer/KeystoneFeedsConsumer.abi ../../../contracts/solc/v0.8.24/KeystoneFeedsConsumer/KeystoneFeedsConsumer.bin 6ac5b12eff3b022a35c3c40d5ed0285bf9bfec0e3669a4b12307332a216048ca
 forwarder: ../../../contracts/solc/v0.8.24/KeystoneForwarder/KeystoneForwarder.abi ../../../contracts/solc/v0.8.24/KeystoneForwarder/KeystoneForwarder.bin 03911334d0c88f8ee8ee2d9832fd312bc8a48c824fcda5c807585af2d0e6a148
