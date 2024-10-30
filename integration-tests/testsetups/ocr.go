@@ -825,10 +825,9 @@ func (o *OCRSoakTest) setFilterQuery() {
 
 // pollingOCREvents Polls the blocks for OCR events and logs them to the test logger
 func (o *OCRSoakTest) pollingOCREvents(endTest <-chan time.Time) error {
+
 	// Keep track of the last processed block number
-	startingBlockNum := o.startingBlockNum
-	// Initialized to an invalid block number (max value of uint64)
-	lastCheckedBlockNum := ^uint64(0)
+	processedBlockNum := o.startingBlockNum - 1
 
 	go func() {
 		// TODO: Make this configurable
@@ -850,29 +849,31 @@ func (o *OCRSoakTest) pollingOCREvents(endTest <-chan time.Time) error {
 				}
 
 				// Skip if this block has already been checked
-				if latestBlock == lastCheckedBlockNum {
+				if processedBlockNum == latestBlock {
 					o.log.Debug().
 						Uint64("Latest Block", latestBlock).
-						Uint64("Last Checked Block Number", lastCheckedBlockNum).
+						Uint64("Last Processed Block Number", processedBlockNum).
 						Msg("No new blocks since last poll")
 					continue
 				}
-				// Check if the latest block is behind the starting block just in case
-				if startingBlockNum > latestBlock {
+				// Check if the latest block is behind processedBlockNum due to possible reorgs
+				if processedBlockNum > latestBlock {
 					o.log.Error().
-						Uint64("From Block", startingBlockNum).
+						Uint64("From Block", processedBlockNum).
 						Uint64("To Block", latestBlock).
-						Msg("The latest block is behind the starting block. This could happen due to RPC issues or possibly a reorg")
-					// May need to `startingBlockNum = latestBlock` if this happens frequently due to reorgs
+						Msg("The latest block is behind the processed block. This could happen due to RPC issues or possibly a reorg")
+					processedBlockNum = latestBlock
 					continue
 				}
 
+				fromBlock := processedBlockNum + 1
+
 				// Prepare the filter query with updated block range
-				o.filterQuery.FromBlock = big.NewInt(0).SetUint64(startingBlockNum)
+				o.filterQuery.FromBlock = big.NewInt(0).SetUint64(fromBlock)
 				o.filterQuery.ToBlock = big.NewInt(0).SetUint64(latestBlock)
 
 				o.log.Debug().
-					Uint64("From Block", startingBlockNum).
+					Uint64("From Block", fromBlock).
 					Uint64("To Block", latestBlock).
 					Msg("Fetching logs for the specified range")
 
@@ -920,9 +921,7 @@ func (o *OCRSoakTest) pollingOCREvents(endTest <-chan time.Time) error {
 					}
 				}
 
-				// Track last checked block number and update starting block number
-				lastCheckedBlockNum = latestBlock
-				startingBlockNum = latestBlock + 1
+				processedBlockNum = latestBlock
 			}
 		}
 	}()
