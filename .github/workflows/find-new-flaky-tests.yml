@@ -246,6 +246,15 @@ jobs:
     outputs:
       test_results: ${{ steps.set_test_results.outputs.results }}
     steps:
+      - name: Set Pretty Project Path
+        id: set_project_path_pretty
+        run: |
+          if [ "${{ inputs.projectPath }}" = "." ]; then
+            echo "path=root/go.mod" >> $GITHUB_OUTPUT
+          else
+            echo "path=${{ inputs.projectPath }}/go.mod" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download all test result artifacts
         uses: actions/download-artifact@v4.1.8
         with:
@@ -301,7 +310,7 @@ jobs:
           echo "## Flaky Test Detection Summary" >> $GITHUB_STEP_SUMMARY
           echo "### Comparative Test Analysis" >> $GITHUB_STEP_SUMMARY
 
-          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\` for \`${{ inputs.projectPath }}\` project. See all changes [here](${{ inputs.repoUrl }}/compare/${{ inputs.baseRef }}...${{ inputs.headRef }}#files_bucket)." >> $GITHUB_STEP_SUMMARY
+          echo "Checked changes between \`${{ inputs.baseRef }}\` and \`${{ env.GIT_HEAD_REF }}\` for \`${{ steps.set_project_path_pretty.outputs.path }}\` project. See all changes [here](${{ inputs.repoUrl }}/compare/${{ inputs.baseRef }}...${{ inputs.headRef }}#files_bucket)." >> $GITHUB_STEP_SUMMARY
 
       - name: Append Changed Test Files to GitHub Summary
         if: ${{ needs.find-tests.outputs.changed_test_files != '' && inputs.findByTestFilesDiff && !inputs.findByAffectedPackages }}
@@ -357,7 +366,7 @@ jobs:
         if: ${{ fromJson(steps.set_test_results.outputs.all_tests_count) == 0 }}
         run: |
           echo "### No Tests To Execute" >> $GITHUB_STEP_SUMMARY
-          echo "No updated or new tests found for \`${{ inputs.projectPath }}\` project. The flaky detector will not run." >> $GITHUB_STEP_SUMMARY
+          echo "No updated or new tests found for \`${{ steps.set_project_path_pretty.outputs.path }}\` project. The flaky detector will not run." >> $GITHUB_STEP_SUMMARY
 
       - name: Send Slack message
         uses: slackapi/slack-github-action@6c661ce58804a1a20f6dc5fbee7f0381b469e001 # v1.25.0
