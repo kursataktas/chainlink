@@ -5,7 +5,6 @@ package promwrapper
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"time"
@@ -358,7 +357,5 @@ func (p *promPlugin) setEndTime(timestamp types.ReportTimestamp, cache *cache.Ca
 }
 
 func timestampToKey(timestamp types.ReportTimestamp) string {
-	jsonData, _ := json.Marshal(timestamp)
-	key := string(jsonData)
-	return key
+	return fmt.Sprintf("%x_%d_%d", timestamp.ConfigDigest[:], timestamp.Epoch, timestamp.Round)
 }
