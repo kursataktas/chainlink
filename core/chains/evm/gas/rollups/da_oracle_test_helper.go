@@ -13,16 +13,16 @@ type TestDAOracle struct {
 	toml.DAOracle
 }
 
-func (d *TestDAOracle) OracleType() toml.DAOracleType {
-	return *d.DAOracle.OracleType
+func (d *TestDAOracle) OracleType() *toml.DAOracleType {
+	return d.DAOracle.OracleType
 }
 
 func (d *TestDAOracle) OracleAddress() *types.EIP55Address {
 	return d.DAOracle.OracleAddress
 }
 
-func (d *TestDAOracle) CustomGasPriceCalldata() string {
-	return *d.DAOracle.CustomGasPriceCalldata
+func (d *TestDAOracle) CustomGasPriceCalldata() *string {
+	return d.DAOracle.CustomGasPriceCalldata
 }
 
 func CreateTestDAOracle(t *testing.T, oracleType toml.DAOracleType, oracleAddress string, customGasPriceCalldata string) *TestDAOracle {

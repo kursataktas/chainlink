@@ -2,6 +2,7 @@ package rollups
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"slices"
@@ -80,7 +81,12 @@ func NewL1GasOracle(lggr logger.Logger, ethClient l1OracleClient, chainType chai
 			lggr.Debugf("clientsByChainID map is missing")
 		}
 
-		switch daOracle.OracleType() {
+		oracleType := daOracle.OracleType()
+		if oracleType == nil {
+			return nil, errors.New("required field OracleType is nil in non-nil DAOracle config")
+		}
+
+		switch *oracleType {
 		case toml.DAOracleOPStack:
 			l1Oracle, err = NewOpStackL1GasOracle(lggr, ethClient, chainType, daOracle)
 		case toml.DAOracleArbitrum:
