@@ -61,6 +61,7 @@ type telemeter struct {
 }
 
 func (t *telemeter) EnqueueV3PremiumLegacy(run *pipeline.Run, trrs pipeline.TaskRunResults, streamID uint32, opts llo.DSOpts, val llo.StreamValue, err error) {
+	t.eng.SugaredLogger.Infow("EnqueueV3PremiumLegacy")
 	var adapterError *eautils.AdapterError
 	var dpInvariantViolationDetected bool
 	if errors.As(err, &adapterError) && adapterError.Name == adapterLWBAErrorName {
@@ -69,10 +70,67 @@ func (t *telemeter) EnqueueV3PremiumLegacy(run *pipeline.Run, trrs pipeline.Task
 		// ignore errors
 		return
 	}
-	tObs := TelemetryObservation{run, trrs, streamID, opts, val, dpInvariantViolationDetected}
+	d := TelemetryObservation{run, trrs, streamID, opts, val, dpInvariantViolationDetected}
 	select {
-	case t.chTelemetryObservation <- tObs:
+	case t.chTelemetryObservation <- d:
 	default:
+	}
+
+	// d TelemetryObservation
+	// Temporary debug code
+	eaTelemetryValues := ocrcommon.ParseMercuryEATelemetry(t.eng.SugaredLogger, d.trrs, mercuryutils.REPORT_V3)
+	for _, eaTelem := range eaTelemetryValues {
+		var benchmarkPrice, bidPrice, askPrice int64
+		var bp, bid, ask string
+		switch v := d.val.(type) {
+		case *llo.Decimal:
+			benchmarkPrice = v.Decimal().IntPart()
+			bp = v.Decimal().String()
+		case *llo.Quote:
+			benchmarkPrice = v.Benchmark.IntPart()
+			bp = v.Benchmark.String()
+			bidPrice = v.Bid.IntPart()
+			bid = v.Bid.String()
+			askPrice = v.Ask.IntPart()
+			ask = v.Ask.String()
+		}
+		epoch, round := evm.SeqNrToEpochAndRound(d.opts.OutCtx().SeqNr)
+		tea := &telem.EnhancedEAMercury{
+			DataSource:                      eaTelem.DataSource,
+			DpBenchmarkPrice:                eaTelem.DpBenchmarkPrice,
+			DpBid:                           eaTelem.DpBid,
+			DpAsk:                           eaTelem.DpAsk,
+			DpInvariantViolationDetected:    d.dpInvariantViolationDetected,
+			BridgeTaskRunStartedTimestamp:   eaTelem.BridgeTaskRunStartedTimestamp,
+			BridgeTaskRunEndedTimestamp:     eaTelem.BridgeTaskRunEndedTimestamp,
+			ProviderRequestedTimestamp:      eaTelem.ProviderRequestedTimestamp,
+			ProviderReceivedTimestamp:       eaTelem.ProviderReceivedTimestamp,
+			ProviderDataStreamEstablished:   eaTelem.ProviderDataStreamEstablished,
+			ProviderIndicatedTime:           eaTelem.ProviderIndicatedTime,
+			Feed:                            fmt.Sprintf("streamID:%d", d.streamID),
+			ObservationBenchmarkPrice:       benchmarkPrice,
+			ObservationBid:                  bidPrice,
+			ObservationAsk:                  askPrice,
+			ObservationBenchmarkPriceString: bp,
+			ObservationBidString:            bid,
+			ObservationAskString:            ask,
+			IsLinkFeed:                      false,
+			IsNativeFeed:                    false,
+			ConfigDigest:                    d.opts.ConfigDigest().Hex(),
+			Round:                           int64(round),
+			Epoch:                           int64(epoch),
+			AssetSymbol:                     eaTelem.AssetSymbol,
+			Version:                         uint32(1000 + mercuryutils.REPORT_V3), // add 1000 to distinguish between legacy feeds, this can be changed if necessary
+		}
+		t.eng.SugaredLogger.Infow("EnqueueV3PremiumLegacy", "tea", tea)
+
+		bytes, err := proto.Marshal(tea)
+		if err != nil {
+			t.eng.SugaredLogger.Warnf("protobuf marshal failed %v", err.Error())
+			continue
+		}
+
+		t.eng.SugaredLogger.Infow("EnqueueV3PremiumLegacy Sending LLO EA telemetry", "bytes", bytes)
 	}
 }
 
