@@ -81,6 +81,7 @@ func SetOracleConfig(t *testing.T, b *simulated.Backend, owner *bind.TransactOpt
 		S,                    // S (schedule of randomized transmission order)
 		oracles,
 		reportingPluginConfigBytes,
+		nil,
 		200*time.Millisecond, // maxDurationQuery
 		200*time.Millisecond, // maxDurationObservation
 		200*time.Millisecond, // maxDurationReport

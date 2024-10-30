@@ -47,6 +47,10 @@ var (
 	//go:embed testdata/config-multi-chain.toml
 	multiChainTOML string
 
+	second        = *commoncfg.MustNewDuration(time.Second)
+	minute        = *commoncfg.MustNewDuration(time.Minute)
+	selectionMode = client.NodeSelectionModeHighestHead
+
 	multiChain = Config{
 		Core: toml.Core{
 			RootDir: ptr("my/root/dir"),
@@ -167,6 +171,25 @@ var (
 				Chain: solcfg.Chain{
 					MaxRetries: ptr[int64](12),
 				},
+				MultiNode: solcfg.MultiNodeConfig{
+					MultiNode: solcfg.MultiNode{
+						Enabled:                      ptr(false),
+						PollFailureThreshold:         ptr[uint32](5),
+						PollInterval:                 &second,
+						SelectionMode:                &selectionMode,
+						SyncThreshold:                ptr[uint32](5),
+						NodeIsSyncingEnabled:         ptr(false),
+						LeaseDuration:                &minute,
+						FinalizedBlockPollInterval:   &second,
+						EnforceRepeatableRead:        ptr(true),
+						DeathDeclarationDelay:        &minute,
+						NodeNoNewHeadsThreshold:      &minute,
+						NoNewFinalizedHeadsThreshold: &minute,
+						FinalityDepth:                ptr[uint32](0),
+						FinalityTagEnabled:           ptr(true),
+						FinalizedBlockOffset:         ptr[uint32](0),
+					},
+				},
 				Nodes: []*solcfg.Node{
 					{Name: ptr("primary"), URL: commoncfg.MustParseURL("http://mainnet.solana.com")},
 				},
@@ -175,6 +198,25 @@ var (
 				ChainID: ptr("testnet"),
 				Chain: solcfg.Chain{
 					OCR2CachePollPeriod: commoncfg.MustNewDuration(time.Minute),
+				},
+				MultiNode: solcfg.MultiNodeConfig{
+					MultiNode: solcfg.MultiNode{
+						Enabled:                      ptr(false),
+						PollFailureThreshold:         ptr[uint32](5),
+						PollInterval:                 &second,
+						SelectionMode:                &selectionMode,
+						SyncThreshold:                ptr[uint32](5),
+						NodeIsSyncingEnabled:         ptr(false),
+						LeaseDuration:                &minute,
+						FinalizedBlockPollInterval:   &second,
+						EnforceRepeatableRead:        ptr(true),
+						DeathDeclarationDelay:        &minute,
+						NodeNoNewHeadsThreshold:      &minute,
+						NoNewFinalizedHeadsThreshold: &minute,
+						FinalityDepth:                ptr[uint32](0),
+						FinalityTagEnabled:           ptr(true),
+						FinalizedBlockOffset:         ptr[uint32](0),
+					},
 				},
 				Nodes: []*solcfg.Node{
 					{Name: ptr("secondary"), URL: commoncfg.MustParseURL("http://testnet.solana.com")},
@@ -694,23 +736,43 @@ func TestConfig_Marshal(t *testing.T) {
 			ChainID: ptr("mainnet"),
 			Enabled: ptr(false),
 			Chain: solcfg.Chain{
-				BalancePollPeriod:       commoncfg.MustNewDuration(time.Minute),
-				ConfirmPollPeriod:       commoncfg.MustNewDuration(time.Second),
-				OCR2CachePollPeriod:     commoncfg.MustNewDuration(time.Minute),
-				OCR2CacheTTL:            commoncfg.MustNewDuration(time.Hour),
-				TxTimeout:               commoncfg.MustNewDuration(time.Hour),
-				TxRetryTimeout:          commoncfg.MustNewDuration(time.Minute),
-				TxConfirmTimeout:        commoncfg.MustNewDuration(time.Second),
-				SkipPreflight:           ptr(true),
-				Commitment:              ptr("banana"),
-				MaxRetries:              ptr[int64](7),
-				FeeEstimatorMode:        ptr("fixed"),
-				ComputeUnitPriceMax:     ptr[uint64](1000),
-				ComputeUnitPriceMin:     ptr[uint64](10),
-				ComputeUnitPriceDefault: ptr[uint64](100),
-				FeeBumpPeriod:           commoncfg.MustNewDuration(time.Minute),
-				BlockHistoryPollPeriod:  commoncfg.MustNewDuration(time.Minute),
-				ComputeUnitLimitDefault: ptr[uint32](100_000),
+				BalancePollPeriod:        commoncfg.MustNewDuration(time.Minute),
+				ConfirmPollPeriod:        commoncfg.MustNewDuration(time.Second),
+				OCR2CachePollPeriod:      commoncfg.MustNewDuration(time.Minute),
+				OCR2CacheTTL:             commoncfg.MustNewDuration(time.Hour),
+				TxTimeout:                commoncfg.MustNewDuration(time.Hour),
+				TxRetryTimeout:           commoncfg.MustNewDuration(time.Minute),
+				TxConfirmTimeout:         commoncfg.MustNewDuration(time.Second),
+				SkipPreflight:            ptr(true),
+				Commitment:               ptr("banana"),
+				MaxRetries:               ptr[int64](7),
+				FeeEstimatorMode:         ptr("fixed"),
+				ComputeUnitPriceMax:      ptr[uint64](1000),
+				ComputeUnitPriceMin:      ptr[uint64](10),
+				ComputeUnitPriceDefault:  ptr[uint64](100),
+				FeeBumpPeriod:            commoncfg.MustNewDuration(time.Minute),
+				BlockHistoryPollPeriod:   commoncfg.MustNewDuration(time.Minute),
+				ComputeUnitLimitDefault:  ptr[uint32](100_000),
+				EstimateComputeUnitLimit: ptr(false),
+			},
+			MultiNode: solcfg.MultiNodeConfig{
+				MultiNode: solcfg.MultiNode{
+					Enabled:                      ptr(false),
+					PollFailureThreshold:         ptr[uint32](5),
+					PollInterval:                 &second,
+					SelectionMode:                &selectionMode,
+					SyncThreshold:                ptr[uint32](5),
+					NodeIsSyncingEnabled:         ptr(false),
+					LeaseDuration:                &minute,
+					FinalizedBlockPollInterval:   &second,
+					EnforceRepeatableRead:        ptr(true),
+					DeathDeclarationDelay:        &minute,
+					NodeNoNewHeadsThreshold:      &minute,
+					NoNewFinalizedHeadsThreshold: &minute,
+					FinalityDepth:                ptr[uint32](0),
+					FinalityTagEnabled:           ptr(true),
+					FinalizedBlockOffset:         ptr[uint32](0),
+				},
 			},
 			Nodes: []*solcfg.Node{
 				{Name: ptr("primary"), URL: commoncfg.MustParseURL("http://solana.web")},
@@ -1217,6 +1279,24 @@ ComputeUnitPriceDefault = 100
 FeeBumpPeriod = '1m0s'
 BlockHistoryPollPeriod = '1m0s'
 ComputeUnitLimitDefault = 100000
+EstimateComputeUnitLimit = false
+
+[Solana.MultiNode]
+Enabled = false
+PollFailureThreshold = 5
+PollInterval = '1s'
+SelectionMode = 'HighestHead'
+SyncThreshold = 5
+NodeIsSyncingEnabled = false
+LeaseDuration = '1m0s'
+FinalizedBlockPollInterval = '1s'
+EnforceRepeatableRead = true
+DeathDeclarationDelay = '1m0s'
+NodeNoNewHeadsThreshold = '1m0s'
+NoNewFinalizedHeadsThreshold = '1m0s'
+FinalityDepth = 0
+FinalityTagEnabled = true
+FinalizedBlockOffset = 0
 
 [[Solana.Nodes]]
 Name = 'primary'
@@ -1318,6 +1398,16 @@ func TestConfig_full(t *testing.T) {
 		if got.EVM[c].Transactions.AutoPurge.DetectionApiUrl == nil {
 			got.EVM[c].Transactions.AutoPurge.DetectionApiUrl = new(commoncfg.URL)
 		}
+		if got.EVM[c].GasEstimator.DAOracle.OracleType == nil {
+			oracleType := evmcfg.DAOracleOPStack
+			got.EVM[c].GasEstimator.DAOracle.OracleType = &oracleType
+		}
+		if got.EVM[c].GasEstimator.DAOracle.OracleAddress == nil {
+			got.EVM[c].GasEstimator.DAOracle.OracleAddress = new(types.EIP55Address)
+		}
+		if got.EVM[c].GasEstimator.DAOracle.CustomGasPriceCalldata == nil {
+			got.EVM[c].GasEstimator.DAOracle.CustomGasPriceCalldata = new(string)
+		}
 	}
 
 	cfgtest.AssertFieldsNotNil(t, got)
@@ -1344,7 +1434,7 @@ func TestConfig_Validate(t *testing.T) {
 		- LDAP.RunUserGroupCN: invalid value (<nil>): LDAP ReadUserGroupCN can not be empty
 		- LDAP.RunUserGroupCN: invalid value (<nil>): LDAP RunUserGroupCN can not be empty
 		- LDAP.ReadUserGroupCN: invalid value (<nil>): LDAP ReadUserGroupCN can not be empty
-	- EVM: 9 errors:
+	- EVM: 10 errors:
 		- 1.ChainID: invalid value (1): duplicate - must be unique
 		- 0.Nodes.1.Name: invalid value (foo): duplicate - must be unique
 		- 3.Nodes.4.WSURL: invalid value (ws://dupe.com): duplicate - must be unique
@@ -1400,6 +1490,7 @@ func TestConfig_Validate(t *testing.T) {
 			- ChainID: missing: required for all chains
 			- Nodes: missing: must have at least one node
 		- 5.Transactions.AutoPurge.DetectionApiUrl: invalid value (): must be set for scroll
+		- 6.Nodes: missing: 0th node (primary) must have a valid WSURL when http polling is disabled
 	- Cosmos: 5 errors:
 		- 1.ChainID: invalid value (Malaga-420): duplicate - must be unique
 		- 0.Nodes.1.Name: invalid value (test): duplicate - must be unique

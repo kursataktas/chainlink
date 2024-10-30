@@ -5,6 +5,7 @@ import {IBurnMintERC20} from "../../../shared/token/ERC20/IBurnMintERC20.sol";
 import {IPoolV1} from "../../interfaces/IPool.sol";
 import {ITokenMessenger} from "../../pools/USDC/ITokenMessenger.sol";
 
+import {Ownable2Step} from "../../../shared/access/Ownable2Step.sol";
 import {BurnMintERC677} from "../../../shared/token/ERC677/BurnMintERC677.sol";
 import {Router} from "../../Router.sol";
 import {Internal} from "../../libraries/Internal.sol";
@@ -118,7 +119,9 @@ contract USDCTokenPoolSetup is BaseTest {
     s_router.applyRampUpdates(onRampUpdates, new Router.OffRamp[](0), offRampUpdates);
   }
 
-  function _generateUSDCMessage(USDCMessage memory usdcMessage) internal pure returns (bytes memory) {
+  function _generateUSDCMessage(
+    USDCMessage memory usdcMessage
+  ) internal pure returns (bytes memory) {
     return abi.encodePacked(
       usdcMessage.version,
       usdcMessage.sourceDomain,
@@ -580,7 +583,7 @@ contract USDCTokenPool_setDomains is USDCTokenPoolSetup {
     USDCTokenPool.DomainUpdate[] memory domainUpdates = new USDCTokenPool.DomainUpdate[](0);
 
     vm.startPrank(STRANGER);
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
 
     s_usdcTokenPool.setDomains(domainUpdates);
   }

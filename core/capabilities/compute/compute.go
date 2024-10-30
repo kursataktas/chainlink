@@ -3,8 +3,10 @@ package compute
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,18 +16,24 @@ import (
 
 	"github.com/smartcontractkit/chainlink-common/pkg/capabilities"
 	capabilitiespb "github.com/smartcontractkit/chainlink-common/pkg/capabilities/pb"
+	"github.com/smartcontractkit/chainlink-common/pkg/custmsg"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	coretypes "github.com/smartcontractkit/chainlink-common/pkg/types/core"
-	"github.com/smartcontractkit/chainlink-common/pkg/values"
 	"github.com/smartcontractkit/chainlink-common/pkg/workflows/wasm/host"
 	wasmpb "github.com/smartcontractkit/chainlink-common/pkg/workflows/wasm/pb"
+	"github.com/smartcontractkit/chainlink/v2/core/capabilities/validation"
+	"github.com/smartcontractkit/chainlink/v2/core/capabilities/webapi"
+	ghcapabilities "github.com/smartcontractkit/chainlink/v2/core/services/gateway/handlers/capabilities"
 )
 
 const (
 	CapabilityIDCompute = "custom_compute@1.0.0"
 
-	binaryKey = "binary"
-	configKey = "config"
+	binaryKey       = "binary"
+	configKey       = "config"
+	maxMemoryMBsKey = "maxMemoryMBs"
+	timeoutKey      = "timeout"
+	tickIntervalKey = "tickInterval"
 )
 
 var (
@@ -62,9 +70,18 @@ var (
 var _ capabilities.ActionCapability = (*Compute)(nil)
 
 type Compute struct {
-	log      logger.Logger
+	log logger.Logger
+
+	// emitter is used to emit messages from the WASM module to a configured collector.
+	emitter  custmsg.MessageEmitter
 	registry coretypes.CapabilitiesRegistry
 	modules  *moduleCache
+
+	// transformer is used to transform a values.Map into a ParsedConfig struct on each execution
+	// of a request.
+	transformer              ConfigTransformer
+	outgoingConnectorHandler *webapi.OutgoingConnectorHandler
+	idGenerator              func() string
 }
 
 func (c *Compute) RegisterToWorkflow(ctx context.Context, request capabilities.RegisterToWorkflowRequest) error {
@@ -91,21 +108,16 @@ func copyRequest(req capabilities.CapabilityRequest) capabilities.CapabilityRequ
 func (c *Compute) Execute(ctx context.Context, request capabilities.CapabilityRequest) (capabilities.CapabilityResponse, error) {
 	copied := copyRequest(request)
 
-	binary, err := c.popBytesValue(copied.Config, binaryKey)
+	cfg, err := c.transformer.Transform(copied.Config)
 	if err != nil {
-		return capabilities.CapabilityResponse{}, fmt.Errorf("invalid request: %w", err)
+		return capabilities.CapabilityResponse{}, fmt.Errorf("invalid request: could not transform config: %w", err)
 	}
 
-	config, err := c.popBytesValue(copied.Config, configKey)
-	if err != nil {
-		return capabilities.CapabilityResponse{}, fmt.Errorf("invalid request: %w", err)
-	}
-
-	id := generateID(binary)
+	id := generateID(cfg.Binary)
 
 	m, ok := c.modules.get(id)
 	if !ok {
-		mod, err := c.initModule(id, binary, request.Metadata.WorkflowID, request.Metadata.ReferenceID)
+		mod, err := c.initModule(id, cfg.ModuleConfig, cfg.Binary, request.Metadata.WorkflowID, request.Metadata.WorkflowExecutionID, request.Metadata.ReferenceID)
 		if err != nil {
 			return capabilities.CapabilityResponse{}, err
 		}
@@ -113,12 +125,14 @@ func (c *Compute) Execute(ctx context.Context, request capabilities.CapabilityRe
 		m = mod
 	}
 
-	return c.executeWithModule(m.module, config, request)
+	return c.executeWithModule(ctx, m.module, cfg.Config, request)
 }
 
-func (c *Compute) initModule(id string, binary []byte, workflowID, referenceID string) (*module, error) {
+func (c *Compute) initModule(id string, cfg *host.ModuleConfig, binary []byte, workflowID, workflowExecutionID, referenceID string) (*module, error) {
 	initStart := time.Now()
-	mod, err := host.NewModule(&host.ModuleConfig{Logger: c.log}, binary)
+
+	cfg.Fetch = c.createFetcher(workflowID, workflowExecutionID)
+	mod, err := host.NewModule(cfg, binary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate WASM module: %w", err)
 	}
@@ -133,22 +147,7 @@ func (c *Compute) initModule(id string, binary []byte, workflowID, referenceID s
 	return m, nil
 }
 
-func (c *Compute) popBytesValue(m *values.Map, key string) ([]byte, error) {
-	v, ok := m.Underlying[key]
-	if !ok {
-		return nil, fmt.Errorf("could not find %q in map", key)
-	}
-
-	vb, ok := v.(*values.Bytes)
-	if !ok {
-		return nil, fmt.Errorf("value is not bytes: %q", key)
-	}
-
-	delete(m.Underlying, key)
-	return vb.Underlying, nil
-}
-
-func (c *Compute) executeWithModule(module *host.Module, config []byte, req capabilities.CapabilityRequest) (capabilities.CapabilityResponse, error) {
+func (c *Compute) executeWithModule(ctx context.Context, module *host.Module, config []byte, req capabilities.CapabilityRequest) (capabilities.CapabilityResponse, error) {
 	executeStart := time.Now()
 	capReq := capabilitiespb.CapabilityRequestToProto(req)
 
@@ -161,7 +160,7 @@ func (c *Compute) executeWithModule(module *host.Module, config []byte, req capa
 			},
 		},
 	}
-	resp, err := module.Run(wasmReq)
+	resp, err := module.Run(ctx, wasmReq)
 	if err != nil {
 		return capabilities.CapabilityResponse{}, fmt.Errorf("error running module: %w", err)
 	}
@@ -202,11 +201,79 @@ func (c *Compute) Close() error {
 	return nil
 }
 
-func NewAction(log logger.Logger, registry coretypes.CapabilitiesRegistry) *Compute {
-	compute := &Compute{
-		log:      logger.Named(log, "CustomCompute"),
-		registry: registry,
-		modules:  newModuleCache(clockwork.NewRealClock(), 1*time.Minute, 10*time.Minute, 3),
+func (c *Compute) createFetcher(workflowID, workflowExecutionID string) func(ctx context.Context, req *wasmpb.FetchRequest) (*wasmpb.FetchResponse, error) {
+	return func(ctx context.Context, req *wasmpb.FetchRequest) (*wasmpb.FetchResponse, error) {
+		if err := validation.ValidateWorkflowOrExecutionID(workflowID); err != nil {
+			return nil, fmt.Errorf("workflow ID %q is invalid: %w", workflowID, err)
+		}
+		if err := validation.ValidateWorkflowOrExecutionID(workflowExecutionID); err != nil {
+			return nil, fmt.Errorf("workflow execution ID %q is invalid: %w", workflowExecutionID, err)
+		}
+
+		messageID := strings.Join([]string{
+			workflowID,
+			workflowExecutionID,
+			ghcapabilities.MethodComputeAction,
+			c.idGenerator(),
+		}, "/")
+
+		fields := req.Headers.GetFields()
+		headersReq := make(map[string]string, len(fields))
+		for k, v := range fields {
+			headersReq[k] = v.String()
+		}
+
+		payloadBytes, err := json.Marshal(ghcapabilities.Request{
+			URL:       req.Url,
+			Method:    req.Method,
+			Headers:   headersReq,
+			Body:      req.Body,
+			TimeoutMs: req.TimeoutMs,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal fetch request: %w", err)
+		}
+
+		resp, err := c.outgoingConnectorHandler.HandleSingleNodeRequest(ctx, messageID, payloadBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		c.log.Debugw("received gateway response", "resp", resp)
+		var response wasmpb.FetchResponse
+		err = json.Unmarshal(resp.Body.Payload, &response)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal fetch response: %w", err)
+		}
+		return &response, nil
 	}
+}
+
+func NewAction(
+	config webapi.ServiceConfig,
+	log logger.Logger,
+	registry coretypes.CapabilitiesRegistry,
+	handler *webapi.OutgoingConnectorHandler,
+	idGenerator func() string,
+	opts ...func(*Compute),
+) *Compute {
+	var (
+		lggr    = logger.Named(log, "CustomCompute")
+		labeler = custmsg.NewLabeler()
+		compute = &Compute{
+			log:                      lggr,
+			emitter:                  labeler,
+			registry:                 registry,
+			modules:                  newModuleCache(clockwork.NewRealClock(), 1*time.Minute, 10*time.Minute, 3),
+			transformer:              NewTransformer(lggr, labeler),
+			outgoingConnectorHandler: handler,
+			idGenerator:              idGenerator,
+		}
+	)
+
+	for _, opt := range opts {
+		opt(compute)
+	}
+
 	return compute
 }

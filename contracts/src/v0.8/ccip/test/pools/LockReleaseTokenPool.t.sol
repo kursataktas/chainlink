@@ -3,6 +3,7 @@ pragma solidity 0.8.24;
 
 import {IPoolV1} from "../../interfaces/IPool.sol";
 
+import {Ownable2Step} from "../../../shared/access/Ownable2Step.sol";
 import {BurnMintERC677} from "../../../shared/token/ERC677/BurnMintERC677.sol";
 import {Router} from "../../Router.sol";
 import {Pool} from "../../libraries/Pool.sol";
@@ -70,13 +71,15 @@ contract LockReleaseTokenPool_setRebalancer is LockReleaseTokenPoolSetup {
   function test_SetRebalancer_Revert() public {
     vm.startPrank(STRANGER);
 
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
     s_lockReleaseTokenPool.setRebalancer(STRANGER);
   }
 }
 
 contract LockReleaseTokenPool_lockOrBurn is LockReleaseTokenPoolSetup {
-  function test_Fuzz_LockOrBurnNoAllowList_Success(uint256 amount) public {
+  function test_Fuzz_LockOrBurnNoAllowList_Success(
+    uint256 amount
+  ) public {
     amount = bound(amount, 1, _getOutboundRateLimiterConfig().capacity);
     vm.startPrank(s_allowedOnRamp);
 
@@ -316,7 +319,9 @@ contract LockReleaseTokenPool_canAcceptLiquidity is LockReleaseTokenPoolSetup {
 }
 
 contract LockReleaseTokenPool_provideLiquidity is LockReleaseTokenPoolSetup {
-  function test_Fuzz_ProvideLiquidity_Success(uint256 amount) public {
+  function test_Fuzz_ProvideLiquidity_Success(
+    uint256 amount
+  ) public {
     uint256 balancePre = s_token.balanceOf(OWNER);
     s_token.approve(address(s_lockReleaseTokenPool), amount);
 
@@ -335,7 +340,9 @@ contract LockReleaseTokenPool_provideLiquidity is LockReleaseTokenPoolSetup {
     s_lockReleaseTokenPool.provideLiquidity(1);
   }
 
-  function test_Fuzz_ExceedsAllowance(uint256 amount) public {
+  function test_Fuzz_ExceedsAllowance(
+    uint256 amount
+  ) public {
     vm.assume(amount > 0);
     vm.expectRevert("ERC20: insufficient allowance");
     s_lockReleaseTokenPool.provideLiquidity(amount);
@@ -351,7 +358,9 @@ contract LockReleaseTokenPool_provideLiquidity is LockReleaseTokenPoolSetup {
 }
 
 contract LockReleaseTokenPool_withdrawalLiquidity is LockReleaseTokenPoolSetup {
-  function test_Fuzz_WithdrawalLiquidity_Success(uint256 amount) public {
+  function test_Fuzz_WithdrawalLiquidity_Success(
+    uint256 amount
+  ) public {
     uint256 balancePre = s_token.balanceOf(OWNER);
     s_token.approve(address(s_lockReleaseTokenPool), amount);
     s_lockReleaseTokenPool.provideLiquidity(amount);

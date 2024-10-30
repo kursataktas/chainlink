@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.24;
 
+import {Ownable2Step} from "../../../shared/access/Ownable2Step.sol";
 import {BurnMintERC677} from "../../../shared/token/ERC677/BurnMintERC677.sol";
 import {Router} from "../../Router.sol";
 import {RateLimiter} from "../../libraries/RateLimiter.sol";
@@ -103,13 +104,15 @@ contract TokenPool_setRemotePool is TokenPoolSetup {
   function test_setRemotePool_OnlyOwner_Reverts() public {
     vm.startPrank(STRANGER);
 
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
     s_tokenPool.setRemotePool(123124, abi.encode(makeAddr("remotePool")));
   }
 }
 
 contract TokenPool_applyChainUpdates is TokenPoolSetup {
-  function assertState(TokenPool.ChainUpdate[] memory chainUpdates) public view {
+  function assertState(
+    TokenPool.ChainUpdate[] memory chainUpdates
+  ) public view {
     uint64[] memory chainSelectors = s_tokenPool.getSupportedChains();
     for (uint256 i = 0; i < chainUpdates.length; i++) {
       assertEq(chainUpdates[i].remoteChainSelector, chainSelectors[i]);
@@ -223,7 +226,7 @@ contract TokenPool_applyChainUpdates is TokenPoolSetup {
 
   function test_applyChainUpdates_OnlyCallableByOwner_Revert() public {
     vm.startPrank(STRANGER);
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
     s_tokenPool.applyChainUpdates(new TokenPool.ChainUpdate[](0));
   }
 
@@ -459,7 +462,7 @@ contract LockRelease_setRateLimitAdmin is TokenPoolSetup {
   function test_SetRateLimitAdmin_Revert() public {
     vm.startPrank(STRANGER);
 
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
     s_tokenPool.setRateLimitAdmin(STRANGER);
   }
 }
@@ -740,7 +743,7 @@ contract TokenPoolWithAllowList_applyAllowListUpdates is TokenPoolWithAllowListS
     assertEq(address(2), setAddresses[2]);
     assertEq(address(3), setAddresses[3]);
 
-    // remove all from allowList
+    // remove all from allowlist
     for (uint256 i = 0; i < setAddresses.length; ++i) {
       vm.expectEmit();
       emit TokenPool.AllowListRemove(setAddresses[i]);
@@ -768,7 +771,7 @@ contract TokenPoolWithAllowList_applyAllowListUpdates is TokenPoolWithAllowListS
 
   function test_OnlyOwner_Revert() public {
     vm.stopPrank();
-    vm.expectRevert("Only callable by owner");
+    vm.expectRevert(Ownable2Step.OnlyCallableByOwner.selector);
     address[] memory newAddresses = new address[](2);
     s_tokenPool.applyAllowListUpdates(new address[](0), newAddresses);
   }

@@ -2442,6 +2442,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
+
 [HeadTracker]
 HistoryDepth = 300
 MaxBufferSize = 3
@@ -3898,6 +3902,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x4200000000000000000000000000000000000005'
+
 [HeadTracker]
 HistoryDepth = 400
 MaxBufferSize = 3
@@ -4002,6 +4010,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'zksync'
+
 [HeadTracker]
 HistoryDepth = 50
 MaxBufferSize = 3
@@ -4087,7 +4098,7 @@ LimitDefault = 500000
 LimitMax = 500000
 LimitMultiplier = '1'
 LimitTransfer = 21000
-EstimateLimit = false
+EstimateLimit = true
 BumpMin = '10 gwei'
 BumpPercent = 20
 BumpThreshold = 0
@@ -4191,7 +4202,7 @@ LimitDefault = 500000
 LimitMax = 500000
 LimitMultiplier = '1'
 LimitTransfer = 21000
-EstimateLimit = false
+EstimateLimit = true
 BumpMin = '10 gwei'
 BumpPercent = 20
 BumpThreshold = 0
@@ -4314,6 +4325,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'zksync'
+
 [HeadTracker]
 HistoryDepth = 50
 MaxBufferSize = 3
@@ -4417,6 +4431,9 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'zksync'
 
 [HeadTracker]
 HistoryDepth = 50
@@ -4522,6 +4539,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
 
 [HeadTracker]
 HistoryDepth = 300
@@ -5354,6 +5375,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
+
 [HeadTracker]
 HistoryDepth = 300
 MaxBufferSize = 3
@@ -5457,6 +5482,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x4200000000000000000000000000000000000005'
 
 [HeadTracker]
 HistoryDepth = 400
@@ -5873,6 +5902,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
+
 [HeadTracker]
 HistoryDepth = 300
 MaxBufferSize = 3
@@ -6082,6 +6115,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
+
 [HeadTracker]
 HistoryDepth = 100
 MaxBufferSize = 3
@@ -6187,6 +6223,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
+
 [HeadTracker]
 HistoryDepth = 100
 MaxBufferSize = 3
@@ -6291,6 +6330,9 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
 
 [HeadTracker]
 HistoryDepth = 100
@@ -6815,6 +6857,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
+
 [HeadTracker]
 HistoryDepth = 2000
 MaxBufferSize = 3
@@ -6921,6 +6967,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
 
 [HeadTracker]
 HistoryDepth = 2000
@@ -7646,6 +7696,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
+
 [HeadTracker]
 HistoryDepth = 300
 MaxBufferSize = 3
@@ -7749,6 +7803,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
 
 [HeadTracker]
 HistoryDepth = 300
@@ -7855,6 +7913,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
+
 [HeadTracker]
 HistoryDepth = 100
 MaxBufferSize = 3
@@ -7960,6 +8021,9 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
+
 [HeadTracker]
 HistoryDepth = 100
 MaxBufferSize = 3
@@ -8063,6 +8127,9 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'arbitrum'
 
 [HeadTracker]
 HistoryDepth = 100
@@ -8168,6 +8235,10 @@ TransactionPercentile = 60
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
 
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x5300000000000000000000000000000000000002'
+
 [HeadTracker]
 HistoryDepth = 50
 MaxBufferSize = 3
@@ -8271,6 +8342,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x5300000000000000000000000000000000000002'
 
 [HeadTracker]
 HistoryDepth = 50
@@ -8479,6 +8554,10 @@ TransactionPercentile = 60
 
 [GasEstimator.FeeHistory]
 CacheTimeout = '10s'
+
+[GasEstimator.DAOracle]
+OracleType = 'opstack'
+OracleAddress = '0x420000000000000000000000000000000000000F'
 
 [HeadTracker]
 HistoryDepth = 300
@@ -9243,6 +9322,33 @@ TipCapMinimum is the minimum gas tip to use when submitting transactions to the 
 
 (Only applies to EIP-1559 transactions)
 
+## EVM.GasEstimator.DAOracle
+```toml
+[EVM.GasEstimator.DAOracle]
+OracleType = 'opstack' # Example
+OracleAddress = '0x420000000000000000000000000000000000000F' # Example
+CustomGasPriceCalldata = '' # Default
+```
+
+
+### OracleType
+```toml
+OracleType = 'opstack' # Example
+```
+OracleType refers to the oracle family this config belongs to. Currently the available oracle types are: 'opstack', 'arbitrum', 'zksync', and 'custom_calldata'.
+
+### OracleAddress
+```toml
+OracleAddress = '0x420000000000000000000000000000000000000F' # Example
+```
+OracleAddress is the address of the oracle contract.
+
+### CustomGasPriceCalldata
+```toml
+CustomGasPriceCalldata = '' # Default
+```
+CustomGasPriceCalldata is optional and can be set to call a custom gas price function at the given OracleAddress.
+
 ## EVM.GasEstimator.LimitJobType
 ```toml
 [EVM.GasEstimator.LimitJobType]
@@ -9958,6 +10064,7 @@ ComputeUnitPriceDefault = 0 # Default
 FeeBumpPeriod = '3s' # Default
 BlockHistoryPollPeriod = '5s' # Default
 ComputeUnitLimitDefault = 200_000 # Default
+EstimateComputeUnitLimit = false # Default
 ```
 
 
@@ -10075,6 +10182,123 @@ BlockHistoryPollPeriod is the rate to poll for blocks in the block history fee e
 ComputeUnitLimitDefault = 200_000 # Default
 ```
 ComputeUnitLimitDefault is the compute units limit applied to transactions unless overriden during the txm enqueue
+
+### EstimateComputeUnitLimit
+```toml
+EstimateComputeUnitLimit = false # Default
+```
+EstimateComputeUnitLimit enables or disables compute unit limit estimations per transaction. If estimations return 0 used compute, the ComputeUnitLimitDefault value is used, if set.
+
+## Solana.MultiNode
+```toml
+[Solana.MultiNode]
+Enabled = false # Default
+PollFailureThreshold = 5 # Default
+PollInterval = '10s' # Default
+SelectionMode = 'PriorityLevel' # Default
+SyncThreshold = 5 # Default
+NodeIsSyncingEnabled = false # Default
+LeaseDuration = '1m0s' # Default
+FinalizedBlockPollInterval = '10s' # Default
+EnforceRepeatableRead = true # Default
+DeathDeclarationDelay = '10s' # Default
+NodeNoNewHeadsThreshold = '10s' # Default
+NoNewFinalizedHeadsThreshold = '10s' # Default
+FinalityDepth = 0 # Default
+FinalityTagEnabled = true # Default
+FinalizedBlockOffset = 0 # Default
+```
+
+
+### Enabled
+```toml
+Enabled = false # Default
+```
+Enabled enables the multinode feature.
+
+### PollFailureThreshold
+```toml
+PollFailureThreshold = 5 # Default
+```
+PollFailureThreshold is the number of consecutive poll failures before a node is considered unhealthy.
+
+### PollInterval
+```toml
+PollInterval = '10s' # Default
+```
+PollInterval is the rate to poll for node health.
+
+### SelectionMode
+```toml
+SelectionMode = 'PriorityLevel' # Default
+```
+SelectionMode is the method used to select the next best node to use.
+
+### SyncThreshold
+```toml
+SyncThreshold = 5 # Default
+```
+SyncThreshold is the number of blocks behind the best node that a node can be before it is considered out of sync.
+
+### NodeIsSyncingEnabled
+```toml
+NodeIsSyncingEnabled = false # Default
+```
+NodeIsSyncingEnabled enables the feature to avoid sending transactions to nodes that are syncing. Not relavant for Solana.
+
+### LeaseDuration
+```toml
+LeaseDuration = '1m0s' # Default
+```
+LeaseDuration is the max duration a node can be leased for.
+
+### FinalizedBlockPollInterval
+```toml
+FinalizedBlockPollInterval = '10s' # Default
+```
+FinalizedBlockPollInterval is the rate to poll for the finalized block.
+
+### EnforceRepeatableRead
+```toml
+EnforceRepeatableRead = true # Default
+```
+EnforceRepeatableRead enforces the repeatable read guarantee for multinode.
+
+### DeathDeclarationDelay
+```toml
+DeathDeclarationDelay = '10s' # Default
+```
+DeathDeclarationDelay is the duration to wait before declaring a node dead.
+
+### NodeNoNewHeadsThreshold
+```toml
+NodeNoNewHeadsThreshold = '10s' # Default
+```
+NodeNoNewHeadsThreshold is the duration to wait before declaring a node unhealthy due to no new heads.
+
+### NoNewFinalizedHeadsThreshold
+```toml
+NoNewFinalizedHeadsThreshold = '10s' # Default
+```
+NoNewFinalizedHeadsThreshold is the duration to wait before declaring a node unhealthy due to no new finalized heads.
+
+### FinalityDepth
+```toml
+FinalityDepth = 0 # Default
+```
+FinalityDepth is not used when finality tags are enabled.
+
+### FinalityTagEnabled
+```toml
+FinalityTagEnabled = true # Default
+```
+FinalityTagEnabled enables the use of finality tags.
+
+### FinalizedBlockOffset
+```toml
+FinalizedBlockOffset = 0 # Default
+```
+FinalizedBlockOffset is the offset from the finalized block to use for finality tags.
 
 ## Solana.Nodes
 ```toml

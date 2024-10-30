@@ -13,12 +13,17 @@ inputs:
   go-module-file:
     description: Set where the go module file is located at
     default: "go.sum"
+  restore-module-cache-only:
+    description: |
+      Only restore the module cache, don't automatically update it.
+      Leave the updating to go-mod-cache.yml.
+    default: "true"
 
 runs:
   using: composite
   steps:
     - name: Set up Go
-      uses: actions/setup-go@0c52d547c9bc32b1aa3301fd7a9cb496313a4491 # v5.0.0
+      uses: actions/setup-go@v5.0.2
       with:
         go-version-file: ${{ inputs.go-version-file }}
         cache: false
@@ -40,18 +45,37 @@ runs:
       shell: bash
       run: echo "path=./${{ inputs.go-module-file }}" >> $GITHUB_OUTPUT
 
-    - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    # By default, restore the cache only.
+    # If multiple jobs call actions/cache, then only one will get priority to create upon a cache miss.
+    # We will only restore the cache by default (by calling actions/cache/restore) and let the
+    # `go-mod-cache.yml` workflow handle the creation.
+    - uses: actions/cache/restore@v4.1.1
+      if: ${{ inputs.restore-module-cache-only == 'true' }}
       name: Cache Go Modules
       with:
         path: |
           ${{ steps.go-cache-dir.outputs.gomodcache }}
         # The lifetime of go modules is much higher than the build outputs, so we increase cache efficiency
         # here by not having the primary key contain the branch name
-        key: ${{ runner.os }}-gomod-${{ inputs.cache-version }}-${{ hashFiles(steps.go-module-path.output.path) }}
+        key: ${{ runner.os }}-gomod-${{ inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}
         restore-keys: |
           ${{ runner.os }}-gomod-${{ inputs.cache-version }}-
 
-    - uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+    # If this is called, then it will create the cache entry upon a cache miss.
+    # The cache is created after a cache miss, and after job completes successfully.
+    - uses: actions/cache@v4.1.1
+      if: ${{ inputs.restore-module-cache-only != 'true' }}
+      name: Cache Go Modules
+      with:
+        path: |
+          ${{ steps.go-cache-dir.outputs.gomodcache }}
+        # The lifetime of go modules is much higher than the build outputs, so we increase cache efficiency
+        # here by not having the primary key contain the branch name
+        key: ${{ runner.os }}-gomod-${{ inputs.cache-version }}-${{ hashFiles(steps.go-module-path.outputs.path) }}
+        restore-keys: |
+          ${{ runner.os }}-gomod-${{ inputs.cache-version }}-
+
+    - uses: actions/cache@v4.1.1
       if: ${{ inputs.only-modules == 'false' }}
       name: Cache Go Build Outputs
       with:
