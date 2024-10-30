@@ -3,7 +3,6 @@ package changeset
 import (
 	"testing"
 
-
 	"github.com/smartcontractkit/chainlink/deployment"
 
 	ccdeploy "github.com/smartcontractkit/chainlink/deployment/ccip"
@@ -27,43 +26,14 @@ func TestInitialDeploy(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, state.Chains[tenv.HomeChainSel].LinkToken)
 
-<<<<<<< HEAD:integration-tests/deployment/ccip/changeset/initial_deploy_test.go
-	feeds := state.Chains[tenv.FeedChainSel].USDFeeds
-	tokenConfig := ccdeploy.NewTokenConfig()
-	tokenConfig.UpsertTokenInfo(ccdeploy.LinkSymbol,
-		pluginconfig.TokenInfo{
-			AggregatorAddress: feeds[ccdeploy.LinkSymbol].Address().String(),
-			Decimals:          ccdeploy.LinkDecimals,
-			DeviationPPB:      cciptypes.NewBigIntFromInt64(1e9),
-		},
-	)
-	tokenConfig.UpsertTokenInfo(ccdeploy.WethSymbol,
-		pluginconfig.TokenInfo{
-			AggregatorAddress: feeds[ccdeploy.WethSymbol].Address().String(),
-			Decimals:          ccdeploy.WethDecimals,
-			DeviationPPB:      cciptypes.NewBigIntFromInt64(1e9),
-		},
-	)
-
 	output, err := InitialDeploy(tenv.Env, ccdeploy.DeployCCIPContractConfig{
 		HomeChainSel:        tenv.HomeChainSel,
 		FeedChainSel:        tenv.FeedChainSel,
 		ChainsToDeploy:      tenv.Env.AllChainSelectors(),
-		TokenConfig:         tokenConfig,
+		TokenConfig:         ccdeploy.NewTestTokenConfig(state.Chains[tenv.FeedChainSel].USDFeeds),
 		MCMSConfig:          ccdeploy.NewTestMCMSConfig(t, e),
 		ExistingAddressBook: tenv.Ab,
 		OCRSecrets:          deployment.XXXGenerateTestOCRSecrets(),
-=======
-	output, err := InitialDeployChangeSet(tenv.Ab, tenv.Env, ccdeploy.DeployCCIPContractConfig{
-		HomeChainSel:       tenv.HomeChainSel,
-		FeedChainSel:       tenv.FeedChainSel,
-		ChainsToDeploy:     tenv.Env.AllChainSelectors(),
-		TokenConfig:        ccdeploy.NewTestTokenConfig(state.Chains[tenv.FeedChainSel].USDFeeds),
-		MCMSConfig:         ccdeploy.NewTestMCMSConfig(t, e),
-		CapabilityRegistry: state.Chains[tenv.HomeChainSel].CapabilityRegistry.Address(),
-		FeeTokenContracts:  tenv.FeeTokenContracts,
-		OCRSecrets:         deployment.XXXGenerateTestOCRSecrets(),
->>>>>>> develop:deployment/ccip/changeset/initial_deploy_test.go
 	})
 	require.NoError(t, err)
 	// Get new state after migration.
