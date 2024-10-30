@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: 'https://github.com/smartcontractkit/chainlink'
+      projectPath:
+        required: true
+        type: string
+        description: 'The path to the project to run the flaky test detection.'
+        default: '.'          
       baseRef:
         required: true
         type: string
@@ -59,6 +64,7 @@ jobs:
     with:
       repoUrl: ${{ inputs.repoUrl }}
       baseRef: ${{ inputs.baseRef }}
+      projectPath: ${{ inputs.projectPath }}
       headRef: ${{ inputs.headRef }}
       runCount: ${{ inputs.runCount }}
       runThreshold: ${{ inputs.runThreshold }}

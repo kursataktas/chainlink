@@ -7,6 +7,11 @@ on:
         required: true
         type: string
         description: 'The URL of the repository to compare changes for detecting flaky tests.'
+      projectPath:
+        required: true
+        type: string
+        description: 'The path to the project to run the flaky test detection.'
+        default: '.'  
       baseRef:
         required: true
         type: string
@@ -60,8 +65,6 @@ on:
 
 env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
-  # Exclude paths other than main go project
-  EXCLUDE_PATHS: "integration-tests,dashboard-lib,chainlink-relay,tools/goreleaser-config"
 
 jobs:
   find-tests:
@@ -86,7 +89,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@e23466e1b565345af550198c55128ab89ef857f2
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@c706391933d1adfaf2fbeee7d8ddeeb3a6ac4b1d
 
       - name: Find new or updated test packages
         id: find-tests
@@ -98,7 +101,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          PACKAGES=$(flakeguard find --find-by-test-files-diff=${{ inputs.findByTestFilesDiff }} --find-by-affected-packages=${{ inputs.findByAffectedPackages }} --base-ref=origin/${{ inputs.baseRef }} --project-path=${{ inputs.projectPath }})
           echo $PACKAGES
           echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
 
@@ -112,7 +115,7 @@ jobs:
           PATH=$PATH:$(go env GOPATH)/bin
           export PATH
 
-          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=origin/${{ inputs.baseRef }} --excludes=${{ env.EXCLUDE_PATHS }})
+          TEST_FILES=$(flakeguard find --only-show-changed-test-files=true --base-ref=origin/${{ inputs.baseRef }} --project-path=${{ inputs.projectPath }})
           echo $TEST_FILES
           echo "test_files=$TEST_FILES" >> $GITHUB_OUTPUT
           
@@ -211,15 +214,23 @@ jobs:
           pushd $(go list -m -f "{{.Dir}}" github.com/smartcontractkit/chainlink-starknet/relayer)
           go install ./pkg/chainlink/cmd/chainlink-starknet
           popd
+
+      - name: Change dir to project path
+        run: cd ${{ inputs.projectPath }}
+
+      - name: Download Go vendor packages
+        run: go mod download
+
       - name: Clean test cache
         run: go clean -testcache
+
       - name: Generate random id
         id: gen_id
         run: echo "id=$(uuidgen)" >> "$GITHUB_OUTPUT"
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@e23466e1b565345af550198c55128ab89ef857f2
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@c706391933d1adfaf2fbeee7d8ddeeb3a6ac4b1d
 
       - name: Run tests with flakeguard
         shell: bash
