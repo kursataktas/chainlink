@@ -7,7 +7,7 @@ OUTPUT_FILE=${OUTPUT_FILE:-"./output.txt"}
 
 echo "Finding and running integration-tagged tests"
 INTEGRATION_TAGGED_TEST_FILES=$(find . -name '*_test.go' -exec grep -l '//go:build integration' {} +)
-if [ -z "$INTEGRATION_TAGGED_TEST_FILES" ]; then
+if [[ -z $INTEGRATION_TAGGED_TEST_FILES ]]; then
   echo "No integration-tagged tests found."
   exit 0
 fi
@@ -16,17 +16,17 @@ INTEGRATION_TEST_DIRS_SPACE_DELIMITED=$(echo "$INTEGRATION_TEST_DIRS" | tr '\n' 
 
 echo "Failed tests and panics: ---------------------"
 echo ""
-if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
+if [[ $GITHUB_EVENT_NAME == "schedule" ]]; then
   # Experimental code to minimize size of this coverage report
   # ALL_IMPORTS=$(go list -f '{{ join .Imports "\n" }}' $INTEGRATION_TEST_DIRS | sort -u)
   # COVERPKG_DIRS=$(echo "$INTEGRATION_TEST_DIRS $ALL_IMPORTS" | grep "smartcontractkit/chainlink" | tr '\n' ',')
-  if [ "$DEBUG" == "true" ]; then 
+  if [[ $DEBUG == "true" ]]; then 
     go test -json -tags integration -vet=off -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $INTEGRATION_TEST_DIRS_SPACE_DELIMITED | tee $OUTPUT_FILE
   else
     go test -json -tags integration -vet=off -covermode=atomic -coverpkg=./... -coverprofile=coverage.txt $INTEGRATION_TEST_DIRS_SPACE_DELIMITED | cat > $OUTPUT_FILE
   fi
 else
-  if [ "$DEBUG" == "true" ]; then 
+  if [[ $DEBUG == "true" ]]; then 
     go test -vet=off -tags integration $INTEGRATION_TEST_DIRS_SPACE_DELIMITED | tee $OUTPUT_FILE
   else
     go test -vet=off -tags integration $INTEGRATION_TEST_DIRS_SPACE_DELIMITED | cat > $OUTPUT_FILE
