@@ -9,7 +9,7 @@ contract OCR3Capability is OwnerIsCreator, OCR2Abstract {
   error InvalidConfig(string message);
   error ReportingUnsupported();
 
-  string public constant override typeAndVersion = "Keystone 1.0.0";
+  string public constant override typeAndVersion = "OCR3Capability 1.0.0";
 
   // incremented each time a new config is posted. This count is incorporated
   // into the config digest, to prevent replay attacks.
@@ -28,7 +28,11 @@ contract OCR3Capability is OwnerIsCreator, OCR2Abstract {
   ConfigInfo internal s_configInfo;
 
   // Reverts transaction if config args are invalid
-  modifier checkConfigValid(uint256 numSigners, uint256 numTransmitters, uint256 f) {
+  modifier checkConfigValid(
+    uint256 numSigners,
+    uint256 numTransmitters,
+    uint256 f
+  ) {
     if (numSigners > MAX_NUM_ORACLES) revert InvalidConfig("too many signers");
     if (f == 0) revert InvalidConfig("f must be positive");
     if (numSigners != numTransmitters) revert InvalidConfig("oracle addresses out of registration");
