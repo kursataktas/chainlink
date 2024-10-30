@@ -9,16 +9,13 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
+	"github.com/stretchr/testify/require"
 
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
-	"github.com/smartcontractkit/chainlink/integration-tests/docker/test_env"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/require"
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap/zapcore"
@@ -249,32 +246,6 @@ func TestSendRequest(t *testing.T, e deployment.Environment, state CCIPOnChainSt
 	seqNum := it.Event.Message.Header.SequenceNumber
 	t.Logf("CCIP message sent from chain selector %d to chain selector %d tx %s seqNum %d", src, dest, tx.Hash().String(), seqNum)
 	return seqNum
-}
-
-// DeployedLocalDevEnvironment is a helper struct for setting up a local dev environment with docker
-type DeployedLocalDevEnvironment struct {
-	DeployedEnv
-	testEnv *test_env.CLClusterTestEnv
-	DON     *devenv.DON
-}
-
-func (d DeployedLocalDevEnvironment) RestartChainlinkNodes(t *testing.T) error {
-	errGrp := errgroup.Group{}
-	for _, n := range d.testEnv.ClCluster.Nodes {
-		n := n
-		errGrp.Go(func() error {
-			if err := n.Container.Terminate(testcontext.Get(t)); err != nil {
-				return err
-			}
-			err := n.RestartContainer()
-			if err != nil {
-				return err
-			}
-			return nil
-		})
-
-	}
-	return errGrp.Wait()
 }
 
 // AddLanesForAll adds densely connected lanes for all chains in the environment so that each chain
