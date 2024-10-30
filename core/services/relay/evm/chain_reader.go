@@ -248,8 +248,9 @@ func (cr *chainReader) GetLatestValueWithHeadData(ctx context.Context, readName 
 
 func ethHeadToCommonHead(finalizedHead *evmtypes.Head) *commontypes.Head {
 	return &commontypes.Head{
-		Height:    strconv.FormatInt(finalizedHead.Number, 10),
-		Hash:      finalizedHead.Hash.Bytes(),
+		Height: strconv.FormatInt(finalizedHead.Number, 10),
+		Hash:   finalizedHead.Hash.Bytes(),
+		//nolint:G115
 		Timestamp: uint64(finalizedHead.Timestamp.Unix()),
 	}
 }
