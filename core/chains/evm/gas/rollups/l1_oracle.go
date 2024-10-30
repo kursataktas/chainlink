@@ -55,18 +55,6 @@ func IsRollupWithL1Support(chainType chaintype.ChainType) bool {
 	return slices.Contains(supportedChainTypes, chainType)
 }
 
-func IsDAClientSupported(clientsByChainID map[string]DAClient, DAChainID string) bool {
-	if DAChainID == "" {
-		return false
-	}
-
-	if _, exist := clientsByChainID[DAChainID]; !exist {
-		return false
-	}
-
-	return true
-}
-
 func NewL1GasOracle(lggr logger.Logger, ethClient l1OracleClient, chainType chaintype.ChainType, daOracle evmconfig.DAOracle, clientsByChainID map[string]DAClient) (L1Oracle, error) {
 	if !IsRollupWithL1Support(chainType) {
 		return nil, nil
