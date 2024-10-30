@@ -3,10 +3,10 @@ package changeset
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	cciptypes "github.com/smartcontractkit/chainlink-ccip/pkg/types/ccipocr3"
 	"github.com/smartcontractkit/chainlink-ccip/pluginconfig"
-
-	"github.com/stretchr/testify/require"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/utils/testcontext"
 
@@ -16,6 +16,62 @@ import (
 	ccdeploy "github.com/smartcontractkit/chainlink/integration-tests/deployment/ccip"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
 )
+
+func TestDifferentDeployments(t *testing.T) {
+	lggr := logger.TestLogger(t)
+
+	ccipEnv := ccdeploy.NewCCIPEnvironment(
+		ccdeploy.WithChangeSet(InitialDeployChangeSet),
+		ccdeploy.WithLogger(lggr),
+		ccdeploy.WithInMemoryBackend(),
+		ccdeploy.WithFRoleDON(1), // defaults to numNodes/3
+		ccdeploy.WithNumNodes(4),
+		ccdeploy.WithChain("chain1", ccdeploy.CCIPChain{
+			FChain: 1,
+			Nodes:  []int{0, 1, 2, 3},
+		}),
+		ccdeploy.WithChain("chain2", ccdeploy.CCIPChain{
+			FChain: 1,
+			Nodes:  []int{0, 1, 2, 3},
+		}),
+		ccdeploy.WithChain("chain3", ccdeploy.CCIPChain{
+			FChain: 1,
+			Nodes:  []int{0, 1, 2, 3},
+		}),
+	)
+
+	ctx := ccdeploy.Context(t)
+	shutdown, err := ccipEnv.Start(ctx, t)
+	require.NoError(t, err)
+	defer require.NoError(t, shutdown())
+
+	// Need to keep track of the block number for each chain so that event subscription can be done from that block.
+	startBlocks := make(map[uint64]*uint64)
+	// Send a message from each chain to every other chain.
+	expectedSeqNum := make(map[uint64]uint64)
+
+	for src := range e.Chains {
+		for dest, destChain := range e.Chains {
+			if src == dest {
+				continue
+			}
+			latesthdr, err := destChain.Client.HeaderByNumber(testcontext.Get(t), nil)
+			require.NoError(t, err)
+			block := latesthdr.Number.Uint64()
+			startBlocks[dest] = &block
+			seqNum := ccdeploy.SendRequest(t, e, state, src, dest, false)
+			expectedSeqNum[dest] = seqNum
+		}
+	}
+
+	// Wait for all commit reports to land.
+	ccdeploy.ConfirmCommitForAllWithExpectedSeqNums(t, e, state, expectedSeqNum, startBlocks)
+
+	// TODO: use proper assertions to check gas and token prices using events
+
+	// Wait for all exec reports to land
+	ccdeploy.ConfirmExecWithSeqNrForAll(t, e, state, expectedSeqNum, startBlocks)
+}
 
 func TestInitialDeploy(t *testing.T) {
 	lggr := logger.TestLogger(t)
