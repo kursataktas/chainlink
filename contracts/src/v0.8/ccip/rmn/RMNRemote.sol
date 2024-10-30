@@ -40,26 +40,26 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
 
   /// @dev the configuration of an RMN signer
   struct Signer {
-    address onchainPublicKey; // ────╮ For signing reports
-    uint64 nodeIndex; // ────────────╯ Maps to nodes in home chain config, should be strictly increasing
+    address onchainPublicKey; // ─╮ For signing reports.
+    uint64 nodeIndex; // ─────────╯ Maps to nodes in home chain config, should be strictly increasing.
   }
 
   /// @dev the contract config
   struct Config {
-    bytes32 rmnHomeContractConfigDigest; // Digest of the RMNHome contract config
-    Signer[] signers; //                    List of signers
-    uint64 f; //                            Max number of faulty RMN nodes; f+1 signers are required to verify a report, must configure 2f+1 signers in total
+    bytes32 rmnHomeContractConfigDigest; // Digest of the RMNHome contract config.
+    Signer[] signers; // List of signers.
+    uint64 f; // Max number of faulty RMN nodes; f+1 signers are required to verify a report, must configure 2f+1 signers in total
   }
 
   /// @dev part of the payload that RMN nodes sign: keccak256(abi.encode(RMN_V1_6_ANY2EVM_REPORT, report))
   /// @dev this struct is only ever abi-encoded and hashed; it is never stored
   struct Report {
-    uint256 destChainId; //                     To guard against chain selector misconfiguration
-    uint64 destChainSelector; //  ────────────╮ The chain selector of the destination chain
-    address rmnRemoteContractAddress; // ─────╯ The address of this contract
-    address offrampAddress; //                  The address of the offramp on the same chain as this contract
-    bytes32 rmnHomeContractConfigDigest; //     The digest of the RMNHome contract config
-    Internal.MerkleRoot[] merkleRoots; //       The dest lane updates
+    uint256 destChainId; //                 To guard against chain selector misconfiguration.
+    uint64 destChainSelector; //  ────────╮ The chain selector of the destination chain.
+    address rmnRemoteContractAddress; // ─╯ The address of this contract.
+    address offrampAddress; //              The address of the offramp on the same chain as this contract.
+    bytes32 rmnHomeContractConfigDigest; // The digest of the RMNHome contract config.
+    Internal.MerkleRoot[] merkleRoots; //   The dest lane updates.
   }
 
   /// @dev this is included in the preimage of the digest that RMN nodes sign
@@ -70,6 +70,11 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
 
   Config private s_config;
   uint32 private s_configCount;
+
+  /// @dev RMN nodes only generate sigs with v=27; making this constant allows us to save gas by not transmitting v
+  /// @dev Any valid ECDSA sig (r, s, v) can be "flipped" into (r, s*, v*) without knowing the private key (where v=27 or 28 for secp256k1)
+  /// https://github.com/kadenzipfel/smart-contract-vulnerabilities/blob/master/vulnerabilities/signature-malleability.md
+  uint8 private constant ECDSA_RECOVERY_V = 27;
 
   EnumerableSet.Bytes16Set private s_cursedSubjects;
   mapping(address signer => bool exists) private s_signers; // for more gas efficient verify
@@ -90,8 +95,7 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
   function verify(
     address offrampAddress,
     Internal.MerkleRoot[] calldata merkleRoots,
-    Signature[] calldata signatures,
-    uint256 rawVs
+    Signature[] calldata signatures
   ) external view {
     if (s_configCount == 0) {
       revert ConfigNotSet();
@@ -115,8 +119,7 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
     address prevAddress;
     address signerAddress;
     for (uint256 i = 0; i < signatures.length; ++i) {
-      // The v value is bit-encoded into rawVs
-      signerAddress = ecrecover(digest, 27 + uint8(rawVs & 0x01 << i), signatures[i].r, signatures[i].s);
+      signerAddress = ecrecover(digest, ECDSA_RECOVERY_V, signatures[i].r, signatures[i].s);
       if (signerAddress == address(0)) revert InvalidSignature();
       if (prevAddress >= signerAddress) revert OutOfOrderSignatures();
       if (!s_signers[signerAddress]) revert UnexpectedSigner();
@@ -134,6 +137,10 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
   function setConfig(
     Config calldata newConfig
   ) external onlyOwner {
+    if (newConfig.rmnHomeContractConfigDigest == bytes32(0)) {
+      revert ZeroValueNotAllowed();
+    }
+
     // signers are in ascending order of nodeIndex
     for (uint256 i = 1; i < newConfig.signers.length; ++i) {
       if (!(newConfig.signers[i - 1].nodeIndex < newConfig.signers[i].nodeIndex)) {
@@ -242,6 +249,8 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
 
   /// @inheritdoc IRMNRemote
   function isCursed() external view returns (bool) {
+    // There are zero curses under normal circumstances, which means it's cheaper to check for the absence of curses.
+    // than to check the subject list twice, as we have to check for both the legacy and global curse subjects.
     if (s_cursedSubjects.length() == 0) {
       return false;
     }
@@ -252,6 +261,8 @@ contract RMNRemote is OwnerIsCreator, ITypeAndVersion, IRMNRemote {
   function isCursed(
     bytes16 subject
   ) external view returns (bool) {
+    // There are zero curses under normal circumstances, which means it's cheaper to check for the absence of curses.
+    // than to check the subject list twice, as we have to check for both the given and global curse subjects.
     if (s_cursedSubjects.length() == 0) {
       return false;
     }
