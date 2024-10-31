@@ -24,7 +24,7 @@ require (
 	github.com/smartcontractkit/ccip-owner-contracts v0.0.0-20240926212305-a6deabdfce86
 	github.com/smartcontractkit/chain-selectors v1.0.27
 	github.com/smartcontractkit/chainlink-ccip v0.0.0-20241029124258-09d605658a80
-	github.com/smartcontractkit/chainlink-common v0.3.1-0.20241030151019-71eeb0578365
+	github.com/smartcontractkit/chainlink-common v0.3.1-0.20241031094153-6effcf15ff3f
 	github.com/smartcontractkit/chainlink-protos/job-distributor v0.4.0
 	github.com/smartcontractkit/chainlink-testing-framework/lib v1.50.12
 	github.com/smartcontractkit/chainlink/v2 v2.0.0-00010101000000-000000000000
