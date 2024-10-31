@@ -20,11 +20,6 @@ on:
         required: false
         type: string
         description: 'The head reference or branch to compare changes for detecting flaky tests. Default is the current branch.'  
-      runCount:
-        required: false
-        type: string
-        description: 'The number of times to run the tests to detect flaky tests.'
-        default: '5'
       runThreshold:
         required: false
         type: string
@@ -62,6 +57,7 @@ env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
   SKIPPED_TESTS: ${{ fromJson(inputs.extraArgs)['skipped_tests'] || '' }} # Comma separated list of test names to skip running in the flaky detector. Related issue: TT-1823
   MAX_GROUP_SIZE: ${{ fromJson(inputs.extraArgs)['max_group_size'] || '8' }} # The maximum number of jobs to run in parallel when running tests.
+  RUN_COUNT: ${{ fromJson(inputs.extraArgs)['run_count'] || '5' }} # The number of times to run the tests to detect flaky tests.
 
 jobs:
   find-tests:
@@ -228,7 +224,7 @@ jobs:
 
       - name: Run tests with flakeguard
         shell: bash
-        run: flakeguard run --project-path=${{ inputs.projectPath }} --test-packages=${{ matrix.testPackages }} --run-count=${{ inputs.runCount }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --skip-tests=${{ env.SKIPPED_TESTS }} --output-json=test-result.json
+        run: flakeguard run --project-path=${{ inputs.projectPath }} --test-packages=${{ matrix.testPackages }} --run-count=${{ env.RUN_COUNT }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --skip-tests=${{ env.SKIPPED_TESTS }} --output-json=test-result.json
         env:
           CL_DATABASE_URL: ${{ env.DB_URL }}
 
@@ -361,7 +357,7 @@ jobs:
           echo "| **Setting**             | **Value**  |" >> $GITHUB_STEP_SUMMARY
           echo "|-------------------------|------------|" >> $GITHUB_STEP_SUMMARY
           echo "| Flakiness Threshold     | ${threshold_percentage}%       |" >> $GITHUB_STEP_SUMMARY
-          echo "| Test Run Count          | ${{ inputs.runCount }}         |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Run Count          | ${{ env.RUN_COUNT }}         |" >> $GITHUB_STEP_SUMMARY
           echo "| Race Detection          | ${{ inputs.runWithRace }}      |" >> $GITHUB_STEP_SUMMARY
           
       - name: Append No Tests Found Message to GitHub Summary

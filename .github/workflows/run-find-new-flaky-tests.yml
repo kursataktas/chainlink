@@ -22,11 +22,6 @@ on:
         required: false
         type: string
         description: 'The head reference or branch to compare changes for detecting flaky tests. Default is the current branch.'        
-      runCount:
-        required: false
-        type: string
-        description: 'The number of times to run the tests to detect flaky tests.'
-        default: '5'
       runThreshold:
         required: false
         type: string
@@ -66,7 +61,6 @@ jobs:
       baseRef: ${{ inputs.baseRef }}
       projectPath: ${{ inputs.projectPath }}
       headRef: ${{ inputs.headRef }}
-      runCount: ${{ inputs.runCount }}
       runThreshold: ${{ inputs.runThreshold }}
       runWithRace: ${{ inputs.runWithRace }}
       findByTestFilesDiff: ${{ inputs.findByTestFilesDiff }}
