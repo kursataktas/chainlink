@@ -94,6 +94,7 @@ func NewHandler(handlerConfig json.RawMessage, donConfig *config.DONConfig, don 
 	return &handler{
 		Validator:       capabilities.NewValidator[webapicap.TriggerConfig, struct{}, capabilities.TriggerResponse](capabilities.ValidatorArgs{}),
 		config:          cfg,
+		consensusConfig: TriggersConfig{triggersConfig: make(map[string]webapicap.TriggerConfig)},
 		don:             don,
 		donConfig:       donConfig,
 		lggr:            lggr.Named("WebAPIHandler." + donConfig.DonId),
@@ -230,13 +231,7 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 	err := json.Unmarshal(body.Payload, &payload)
 	donID := body.DonId
 	if err != nil {
-		// errors here:
-		// error decoding payload	{"version": "unset@unset",
-		// "err": "json: cannot unmarshal object into Go struct field Map.Underlying of type values.Value",
-		// "payload": "{\"Underlying\":{\"AllowedSenders\":{\"Underlying\":[{\"Underlying\":\"0x853d51d5d9935964267a5050aC53aa63ECA39bc5\"}]},\"AllowedTopics\":{\"Underlying\":[{\"Underlying\":\"daily_price_update\"},{\"Underlying\":\"ad_hoc_price_update\"}]},\"RateLimiter\":{\"Underlying\":{\"GlobalBurst\":{\"Underlying\":101},\"GlobalRPS\":{\"Underlying\":100},\"PerSenderBurst\":{\"Underlying\":103},\"PerSenderRPS\":{\"Underlying\":102}}},\"RequiredParams\":{\"Underlying\":[{\"Underlying\":\"bid\"},{\"Underlying\":\"ask\"}]}}}"}
 		h.lggr.Errorw("error decoding payload", "err", err, "payload", string(body.Payload))
-		// callbackCh <- handlers.UserCallbackPayload{Msg: msg, ErrCode: api.UserMessageParseError, ErrMsg: fmt.Sprintf("error decoding payload %s", err.Error())}
-		// close(callbackCh)
 		return err
 	}
 	triggersConfig := make(map[string]webapicap.TriggerConfig)
@@ -265,9 +260,12 @@ func (h *handler) handleWebAPITriggerUpdateMetadata(ctx context.Context, msg *ap
 		triggersConfig[triggerID] = *reqConfig
 	}
 	h.triggersConfig.triggersConfigMap[donID] = TriggersConfig{lastUpdatedAt: time.Now(), triggersConfig: triggersConfig}
-
-	// h.updateTriggerConsensus()
 	return nil
+}
+
+type triggerStruct struct {
+	config webapicap.TriggerConfig
+	count  int
 }
 
 func (h *handler) updateTriggerConsensus() {
@@ -277,44 +275,66 @@ func (h *handler) updateTriggerConsensus() {
 	triggers := h.triggersConfig.triggersConfigMap
 
 	// 2. Make list of hashes of each node's config.
+	// Update, make a list of hashes of each node's triggerId and config.
 	// 3. Count the number of times each hash appears.
 
-	triggersHashmap := make(map[string]int)
-	triggersHashmapByNodeId := make(map[string]string)
+	// triggerId => triggerConfig hash => triggerStruct
+	triggersHashmap := make(map[string]map[string]triggerStruct)
 
-	for index, triggerConfig := range triggers {
-		s := fmt.Sprintf("%v", triggerConfig.triggersConfig)
-		h := sha1.New()
-		h.Write([]byte(s))
-		hash := hex.EncodeToString(h.Sum(nil))
-		triggersHashmap[hash]++
-		// the node that has this hash
-		triggersHashmapByNodeId[hash] = index
+	// We need to know which triggerConfig has the most votes for each triggerId.
+	// We need to know the count of each triggerConfig for each triggerId.
+	// Need a structure that is for each triggerId, there is a set of triggerConfigs, their hashes and the count of each hash.
+	// convert map to list of triggerConfigs to triggerConfig
+
+	// Performance is a concern as this is O(nodes) * O(triggers)
+
+	for _, triggerConfig := range triggers {
+		for triggerID, triggerConfig := range triggerConfig.triggersConfig {
+			_, isTriggerInHashMap := triggersHashmap[triggerID]
+			if !isTriggerInHashMap {
+				triggersHashmap[triggerID] = make(map[string]triggerStruct)
+			}
+			s := fmt.Sprintf("%v", triggerConfig)
+			h := sha1.New()
+			h.Write([]byte(s))
+			hash := hex.EncodeToString(h.Sum(nil))
+			t, isHashInHashMap := triggersHashmap[triggerID][hash]
+			if !isHashInHashMap {
+				triggersHashmap[triggerID][hash] = triggerStruct{config: triggerConfig, count: 1}
+			} else {
+				t.count++
+				triggersHashmap[triggerID][hash] = t
+			}
+		}
 	}
-
-	// 4. Find the hash that appears the most.
-	// https://stackoverflow.com/questions/18695346/how-can-i-sort-a-mapstringint-by-its-values
 
 	type kv struct {
 		Hash  string
 		Value int
 	}
-	var ss []kv
-	for k, v := range triggersHashmap {
-		ss = append(ss, kv{k, v})
-	}
+	// 4. Find the hash that appears the most.
+	// https://stackoverflow.com/questions/18695346/how-can-i-sort-a-mapstringint-by-its-values
 
-	sort.Slice(ss, func(i, j int) bool {
-		return ss[i].Value > ss[j].Value
-	})
-	// 5. Check if the hash that appears the most appears more than F times.
-	if ss[0].Value < int(h.config.F)+1 {
-		// 6. If it doesn't, do nothing
-		return
+	for triggerID, triggersHashmapByHash := range triggersHashmap {
+
+		var ss []kv
+		for triggerConfigHash, v := range triggersHashmapByHash {
+			ss = append(ss, kv{triggerConfigHash, v.count})
+		}
+
+		sort.Slice(ss, func(i, j int) bool {
+			return ss[i].Value > ss[j].Value
+		})
+		// 5. Check if the hash that appears the most appears more than F times.
+		if ss[0].Value < int(h.config.F)+1 {
+			// 6. If it doesn't, do nothing
+			return
+		}
+		// 7. If it does, update the consensus config to that config.
+		// TODO: how do stale triggerIds get cleaned up?
+		h.consensusConfig.triggersConfig[triggerID] = triggersHashmapByHash[ss[0].Hash].config
+		h.consensusConfig.lastUpdatedAt = time.Now()
 	}
-	// 7. If it does, update the consensus config to that config.
-	NodeId := triggersHashmapByNodeId[ss[0].Hash]
-	h.consensusConfig = h.triggersConfig.triggersConfigMap[NodeId]
 
 }
 

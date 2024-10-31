@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 
@@ -25,6 +26,7 @@ import (
 )
 
 const defaultSendChannelBufferSize = 1000
+const updateGatewayIntervalS = 60
 
 const TriggerType = "web-trigger@1.0.0"
 
@@ -52,6 +54,7 @@ type TriggerConnectorHandler struct {
 	lggr                logger.Logger
 	mu                  sync.Mutex
 	RegisteredWorkflows map[string]webapiTrigger
+	wg                  sync.WaitGroup
 }
 
 var _ capabilities.TriggerCapability = (*TriggerConnectorHandler)(nil)
@@ -173,9 +176,20 @@ func (h *TriggerConnectorHandler) HandleGatewayMessage(ctx context.Context, gate
 }
 
 // Periodically update the gateways with the state of the workflow triggers.
-// Send the allowList for each workflow.
+func (h *TriggerConnectorHandler) loop(ctx context.Context) {
+	defer h.wg.Done()
 
-func (h *TriggerConnectorHandler) UpdateGateways(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Duration(updateGatewayIntervalS) * time.Millisecond):
+			h.updateGateways(ctx)
+		}
+	}
+}
+
+func (h *TriggerConnectorHandler) updateGateways(ctx context.Context) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -282,11 +296,14 @@ func (h *TriggerConnectorHandler) UnregisterTrigger(ctx context.Context, req cap
 
 func (h *TriggerConnectorHandler) Start(ctx context.Context) error {
 	return h.StartOnce("GatewayConnectorServiceWrapper", func() error {
+		h.wg.Add(1)
+		go h.loop(ctx)
 		return h.connector.AddHandler([]string{"web_api_trigger"}, h)
 	})
 }
 func (h *TriggerConnectorHandler) Close() error {
 	return h.StopOnce("GatewayConnectorServiceWrapper", func() error {
+		h.wg.Wait()
 		return nil
 	})
 }

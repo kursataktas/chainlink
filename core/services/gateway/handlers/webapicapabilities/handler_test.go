@@ -371,7 +371,7 @@ func TestHandlerRecieveMetadataMessageFromWorkflowNode(t *testing.T) {
 	require.NotEmpty(t, handler.triggersConfig.triggersConfigMap["testDonId"].lastUpdatedAt)
 
 	require.Equal(t, triggerConfigs, handler.triggersConfig.triggersConfigMap["testDonId"].triggersConfig)
-	require.Empty(t, handler.consensusConfig)
+	require.Empty(t, handler.consensusConfig.triggersConfig)
 	msg2 := &api.Message{
 		Body: api.MessageBody{
 			MessageId: "123",

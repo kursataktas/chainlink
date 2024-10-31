@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/jonboulle/clockwork"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -178,6 +179,19 @@ func TestTriggerExecute(t *testing.T) {
 		require.Equal(t, payload.Topics, []string{"daily_price_update"})
 	})
 
+	t.Run("happy case metadata exchange sent to gateway", func(t *testing.T) {
+		ctx := testutils.Context(t)
+
+		th.connector.On("SendToGateway", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
+			resp, _ := getResponseFromArg(args.Get(2))
+			require.Equal(t, webapicapabilities.TriggerResponsePayload{Status: "ERROR", ErrorMessage: "no Matching Workflow Topics"}, resp)
+		}).Return(nil).Once()
+		th.trigger.Start(ctx)
+
+		fakeClock := clockwork.NewFakeClock()
+		fakeClock.Advance(time.Duration(61 * time.Second))
+	})
+
 	t.Run("happy case single different topic 2 workflows.", func(t *testing.T) {
 		gatewayRequest := gatewayRequest(t, privateKey1, `["ad_hoc_price_update"]`, "")
 
@@ -332,6 +346,7 @@ func TestTriggerExecute2WorkflowsSameTopicDifferentAllowLists(t *testing.T) {
 		require.NoError(t, unwrapErr)
 		require.Equal(t, payload.Topics, []string{"daily_price_update"})
 	})
+
 	err = th.trigger.UnregisterTrigger(ctx, triggerReq)
 	require.NoError(t, err)
 	err = th.trigger.UnregisterTrigger(ctx, triggerReq2)
