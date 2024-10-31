@@ -118,7 +118,7 @@ func (tc *telemetryIngressClient) handleTelemetry() {
 					TelemetryType: string(p.TelemType),
 					SentAt:        time.Now().UnixNano(),
 				}
-				t, err := tc.telemClient.Telem(ctx, telemReq)
+				_, err := tc.telemClient.Telem(ctx, telemReq)
 				if err != nil {
 					tc.eng.Errorf("Could not send telemetry: %v", err)
 					continue
