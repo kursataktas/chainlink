@@ -414,7 +414,6 @@ jobs:
       projectPath: '.'
       baseRef: ${{ github.base_ref }}
       headRef: ${{ github.head_ref }}
-      runCount: '5'
       runThreshold: '1'
       runWithRace: true
       findByTestFilesDiff: true
@@ -434,7 +433,6 @@ jobs:
       projectPath: 'deployment'
       baseRef: ${{ github.base_ref }}
       headRef: ${{ github.head_ref }}
-      runCount: '5'
       runThreshold: '1'
       runWithRace: true
       findByTestFilesDiff: true
