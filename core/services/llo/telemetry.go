@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/smartcontractkit/libocr/commontypes"
 	"google.golang.org/protobuf/proto"
@@ -18,6 +19,7 @@ import (
 	"github.com/smartcontractkit/chainlink/v2/core/services/pipeline/eautils"
 	mercuryutils "github.com/smartcontractkit/chainlink/v2/core/services/relay/evm/mercury/utils"
 	"github.com/smartcontractkit/chainlink/v2/core/services/synchronization/telem"
+	telemPb "github.com/smartcontractkit/chainlink/v2/core/services/synchronization/telem"
 )
 
 const adapterLWBAErrorName = "AdapterLWBAError"
@@ -130,7 +132,18 @@ func (t *telemeter) EnqueueV3PremiumLegacy(run *pipeline.Run, trrs pipeline.Task
 			continue
 		}
 
-		t.eng.SugaredLogger.Infow("EnqueueV3PremiumLegacy Sending LLO EA telemetry", "bytes", bytes)
+		telemReq := &telemPb.TelemRequest{
+			Telemetry:     bytes,
+			Address:       "matt-test-contract",
+			TelemetryType: "test-telemetry",
+			SentAt:        time.Now().UnixNano(),
+		}
+		telemReqBytes, telemReqErr := proto.Marshal(telemReq)
+		if telemReqErr != nil {
+			t.eng.SugaredLogger.Warnf("protobuf marshal failed %v", telemReqErr.Error())
+			continue
+		}
+		t.eng.SugaredLogger.Infow("EnqueueV3PremiumLegacy Sending LLO EA telemetry", "bytes", bytes, "telemReq", telemReq, "telemReqBytes", telemReqBytes)
 	}
 }
 
