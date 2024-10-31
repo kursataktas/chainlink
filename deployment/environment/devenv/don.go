@@ -316,6 +316,20 @@ func (n *Node) RegisterNodeToJobDistributor(ctx context.Context, jd JobDistribut
 		return fmt.Errorf("no csa key found for node %s", n.Name)
 	}
 	csaKey := strings.TrimPrefix(*csaKeyRes, "csa_")
+
+	// tag nodes with p2p_id for easy lookup
+	peerID, err := n.gqlClient.FetchP2PPeerID(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch peer id for node %s: %w", n.Name, err)
+	}
+	if peerID == nil {
+		return fmt.Errorf("no peer id found for node %s", n.Name)
+	}
+	n.labels = append(n.labels, &ptypes.Label{
+		Key:   "p2p_id",
+		Value: pointer.ToString(*peerID),
+	})
+
 	// register the node in the job distributor
 	registerResponse, err := jd.RegisterNode(ctx, &nodev1.RegisterNodeRequest{
 		PublicKey: csaKey,
