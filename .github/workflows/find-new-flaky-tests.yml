@@ -35,11 +35,6 @@ on:
         type: boolean
         description: 'Run tests with -race flag.'
         default: true
-      maxGroupSize:
-        required: false
-        type: string
-        description: 'The maximum number of jobs to run in parallel when running tests.'
-        default: '8'
       findByTestFilesDiff:
         required: false
         type: boolean
@@ -54,13 +49,19 @@ on:
         description: "Slack channel ID to send the notification to for failed tests."
         required: false
         type: string
+      extraArgs:
+        required: false
+        type: string
+        default: '{}'
+        description: 'JSON of extra arguments for the workflow.'
     secrets:
       SLACK_BOT_TOKEN:
         required: false
 
 env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
-  SKIPPED_TESTS: "TestChainComponents" # Comma separated list of test names to skip running in the flaky detector. Related issue: TT-1823
+  SKIPPED_TESTS: ${{ fromJson(inputs.extraArgs)['skipped_tests'] || '' }} # Comma separated list of test names to skip running in the flaky detector. Related issue: TT-1823
+  MAX_GROUP_SIZE: ${{ fromJson(inputs.extraArgs)['max_group_size'] || '8' }} # The maximum number of jobs to run in parallel when running tests.
 
 jobs:
   find-tests:
@@ -121,7 +122,7 @@ jobs:
         shell: bash
         run: |
           PACKAGES=(${{ steps.find-tests.outputs.packages }})
-          DESIRED_GROUP_COUNT=$((${{ inputs.maxGroupSize }}))
+          DESIRED_GROUP_COUNT=$((${{ env.MAX_GROUP_SIZE }}))
           TOTAL_PACKAGES=${#PACKAGES[@]}
 
           # Number of groups should be no more than the number of packages
