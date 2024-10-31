@@ -60,6 +60,7 @@ on:
 
 env:
   GIT_HEAD_REF: ${{ inputs.headRef || github.ref }}
+  SKIPPED_TESTS: "TestChainComponents" # Comma separated list of test names to skip running in the flaky detector. Related issue: TT-1823
 
 jobs:
   find-tests:
@@ -84,7 +85,7 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@b4ae3fde8f2901d313891c96a7cf2cb76757dd80
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@88b7b797ea6ba0f44a81de87b63ee94eb6a277df
 
       - name: Find new or updated test packages
         id: find-tests
@@ -222,11 +223,11 @@ jobs:
 
       - name: Install flakeguard
         shell: bash
-        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@b4ae3fde8f2901d313891c96a7cf2cb76757dd80
+        run: go install github.com/smartcontractkit/chainlink-testing-framework/tools/flakeguard@88b7b797ea6ba0f44a81de87b63ee94eb6a277df
 
       - name: Run tests with flakeguard
         shell: bash
-        run: flakeguard run --project-path=${{ inputs.projectPath }} --test-packages=${{ matrix.testPackages }} --run-count=${{ inputs.runCount }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --output-json=test-result.json
+        run: flakeguard run --project-path=${{ inputs.projectPath }} --test-packages=${{ matrix.testPackages }} --run-count=${{ inputs.runCount }} --threshold=${{ inputs.runThreshold }} --race=${{ inputs.runWithRace }} --skip-tests=${{ env.SKIPPED_TESTS }} --output-json=test-result.json
         env:
           CL_DATABASE_URL: ${{ env.DB_URL }}
 
