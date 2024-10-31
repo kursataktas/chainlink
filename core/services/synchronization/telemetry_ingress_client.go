@@ -118,11 +118,12 @@ func (tc *telemetryIngressClient) handleTelemetry() {
 					TelemetryType: string(p.TelemType),
 					SentAt:        time.Now().UnixNano(),
 				}
-				_, err := tc.telemClient.Telem(ctx, telemReq)
+				t, err := tc.telemClient.Telem(ctx, telemReq)
 				if err != nil {
 					tc.eng.Errorf("Could not send telemetry: %v", err)
 					continue
 				}
+				tc.eng.Infow("Successfully sent telemetry to ingress server", "contractID", p.ContractID, "telemetry", p.Telemetry, "t", t)
 				if tc.logging {
 					tc.eng.Debugw("successfully sent telemetry to ingress server", "contractID", p.ContractID, "telemetry", p.Telemetry)
 				}
