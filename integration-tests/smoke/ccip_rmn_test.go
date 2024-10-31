@@ -22,7 +22,7 @@ import (
 )
 
 func TestRMN(t *testing.T) {
-	// t.Skip("Local only")
+	t.Skip("Local only")
 
 	require.NoError(t, os.Setenv("ENABLE_RMN", "true"))
 
