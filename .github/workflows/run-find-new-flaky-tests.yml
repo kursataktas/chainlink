@@ -8,6 +8,11 @@ on:
         required: true
         type: string
         default: 'https://github.com/smartcontractkit/chainlink'
+      projectPath:
+        required: true
+        type: string
+        description: 'The path to the project to run the flaky test detection.'
+        default: '.'          
       baseRef:
         required: true
         type: string
@@ -46,11 +51,6 @@ on:
         description: "Slack channel ID to send the notification to for failed tests."
         required: false
         type: string
-      slack_notification_after_tests_name:
-        description: "The name of the Slack notification."
-        required: false
-        type: string
-        default: "Flaky Test Detection"             
 
 jobs:
   trigger-flaky-test-detection:
@@ -59,6 +59,7 @@ jobs:
     with:
       repoUrl: ${{ inputs.repoUrl }}
       baseRef: ${{ inputs.baseRef }}
+      projectPath: ${{ inputs.projectPath }}
       headRef: ${{ inputs.headRef }}
       runCount: ${{ inputs.runCount }}
       runThreshold: ${{ inputs.runThreshold }}
@@ -66,6 +67,5 @@ jobs:
       findByTestFilesDiff: ${{ inputs.findByTestFilesDiff }}
       findByAffectedPackages: ${{ inputs.findByAffectedPackages }}
       slackNotificationAfterTestsChannelId: ${{ inputs.slack_notification_after_tests_channel_id }}
-      slackNotificationAfterTestsName: ${{ inputs.slack_notification_after_tests_name }}
     secrets:
       SLACK_BOT_TOKEN: ${{ secrets.QA_SLACK_API_KEY }}
