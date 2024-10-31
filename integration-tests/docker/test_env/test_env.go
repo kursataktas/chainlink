@@ -185,26 +185,25 @@ func (te *ClusterTestEnv) StartClCluster(nodeConfig *chainlink.Config, count int
 }
 
 func (te *ClusterTestEnv) StartRmnCluster(count int) error {
-	sharedConfig := SharedConfig{}
-	localConfig := LocalConfig{}
+	sharedConfig := RmnNodeSharedConfig{}
+	localConfig := RmnNodeLocalConfig{}
 
 	// TODO: This configuration is not coming from the right places; it's
-	// just a temporary solution while I work out the path to get everything that's needed
-	// here (including lane configs)
+	// just hacked together to get the RMN cluster as far as possible without
+	// actual contracts deployed on-chain.
 	for i := 0; i < len(te.EVMNetworks); i++ {
 		net := te.EVMNetworks[i]
 
 		// Kind of hacky, but we override the net name to match Balthazar's expectation based on the
 		// chain ID for the specific test IDs used. TODO: properly match Balthazar's expectations.
-		var name string
-		if net.ChainID == 1337 {
+		name := net.Name
+		switch net.ChainID {
+		case 1337:
 			name = "DevnetAlpha"
-		} else if net.ChainID == 2337 {
+		case 2337:
 			name = "DevnetBeta"
-		} else if net.ChainID == 3337 {
+		case 3337:
 			name = "DevnetGamma"
-		} else {
-			name = net.Name
 		}
 
 		sharedChain := SharedChain{
@@ -248,14 +247,13 @@ func (te *ClusterTestEnv) StartRmnCluster(count int) error {
 			RPCS: te.rpcProviders[net.ChainID].PrivateHttpUrls(),
 		}
 		localConfig.Chains = append(localConfig.Chains, localChain)
-
 		// No lanes since this is just a barebones test environment.
 	}
 
 	for i := 0; i < count; i++ {
 		nodeDefaultCName := fmt.Sprintf("%s-%s", "rmn-node", uuid.NewString()[0:8])
 		// TODO: make the image name/version configurable
-		rmnNode, err := NewRmnNode([]string{te.DockerNetwork.Name}, nodeDefaultCName, "rmn", "latest", sharedConfig, localConfig, te.LogStream)
+		rmnNode, err := NewRmnNode([]string{te.DockerNetwork.Name}, nodeDefaultCName, "rmn", "latest", sharedConfig, localConfig)
 		if err != nil {
 			return err
 		}

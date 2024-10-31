@@ -394,7 +394,11 @@ func DeployLocalCluster(
 				env.ClCluster.Nodes = append(env.ClCluster.Nodes, ccipNode)
 			}
 		}
-		return env.ClCluster.Start()
+		err := env.ClCluster.Start()
+		if err != nil {
+			return err
+		}
+		return env.RmnCluster.Start()
 	}
 	return env, deployCL
 }

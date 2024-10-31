@@ -1182,8 +1182,6 @@ func CCIPDefaultTestSetUp(
 
 	require.Equal(t, len(setUpArgs.Lanes), len(testConfig.NetworkPairs),
 		"Number of bi-directional lanes should be equal to number of network pairs")
-	// only required for env set up
-	setUpArgs.LaneContractsByNetwork = nil
 
 	if configureCLNode {
 		// wait for all jobs to get created
@@ -1200,25 +1198,100 @@ func CCIPDefaultTestSetUp(
 		}
 	}
 
-	// configureRMNNode := true
-	// if configureRMNNode {
-	// 	var chains []test_env.Chain
+	/// TODO make configurable
+	configureRMNNode := true
+	if configureRMNNode {
+		sharedConfig := test_env.RmnNodeSharedConfig{}
+		localConfig := test_env.RmnNodeLocalConfig{}
 
-	// 	// For all networks create a chain entry in LocalConfig
-	// 	for _, network := range testConfig.AllNetworks {
-	// 		chain := test_env.Chain{
-	// 			Name: network.Name,
-	// 			RPC:  network.URLs[0],
-	// 		}
-	// 		chains = append(chains, chain)
-	// 	}
+		// var chains []test_env.Chain
+		// // For all networks create a chain entry in LocalConfig
+		for _, network := range testConfig.AllNetworks {
+			lane, ok := setUpArgs.LaneContractsByNetwork.Load(network.Name)
+			require.True(t, ok, "Lane contract loading shouldn't fail")
+			laneConfig := lane.(*laneconfig.LaneConfig)
 
-	// 	localConfig := test_env.LocalConfig{
-	// 		Chains: chains,
-	// 	}
+			// Kind of hacky, but we override the net name to match Balthazar's expectation based on the
+			// chain ID for the specific test IDs used. TODO: properly match Balthazar's expectations.
+			name := network.Name
+			switch network.ChainID {
+			case 1337:
+				name = "DevnetAlpha"
+			case 2337:
+				name = "DevnetBeta"
+			case 3337:
+				name = "DevnetGamma"
+			}
 
-	// 	test_env.NewRMNNode()
-	// }
+			var stability test_env.StabilityConfig
+			if network.FinalityTag {
+				stability = test_env.StabilityConfig{
+					Type:              "FinalityTag",
+					SoftConfirmations: 0,
+				}
+			} else {
+				stability = test_env.StabilityConfig{
+					Type:              "ConfirmationDepth",
+					SoftConfirmations: 0,
+					// Completely arbitrary for the test
+					HardConfirmations: 10,
+				}
+			}
+
+			sharedChain := test_env.SharedChain{
+				Name:                         name,
+				MaxTaggedRootsPerVoteToBless: 10,
+				AfnType:                      "V1_5",
+				AfnContract:                  laneConfig.ARM,
+				InflightTime:                 test_env.Duration{Minutes: 5},
+				// TODO: get this value (or the block interval from where it's deduced) into the network config
+				MaxFreshBlockAge: test_env.Duration{Seconds: 2},
+				UponFinalityViolationVoteToCurseOnOtherChainsWithLegacyContracts: true,
+				Stability: stability,
+				// Fee configs are abitrary. TODO: deduce from network config (expanded if needed)
+				BlessFeeConfig: test_env.FeeConfig{
+					Type: "Eip1559",
+					MaxFeePerGas: &test_env.Gwei{
+						Gwei: 400,
+					},
+					MaxPriorityFeePerGas: &test_env.Gwei{
+						Gwei: 2,
+					},
+				},
+				CurseFeeConfig: test_env.FeeConfig{
+					Type: "Eip1559",
+					MaxFeePerGas: &test_env.Gwei{
+						Gwei: 1000,
+					},
+					MaxPriorityFeePerGas: &test_env.Gwei{
+						Gwei: 200,
+					},
+				},
+			}
+			sharedConfig.Chains = append(sharedConfig.Chains, sharedChain)
+			rpc, err := setUpArgs.Env.LocalCluster.GetRpcProvider(network.ChainID)
+			require.NoError(t, err, "rpc provider should exist")
+
+			localChain := test_env.Chain{
+				Name: name,
+				RPCS: rpc.PrivateHttpUrls(),
+			}
+			localConfig.Chains = append(localConfig.Chains, localChain)
+		}
+
+		// TODO: make number of nodes configurable
+		for i := 0; i < 4; i++ {
+			nodeName := fmt.Sprintf("%s-%d-%s", "rmn-node", i, uuid.NewString()[0:8])
+			// TODO make image name/version configurable
+			node, err := test_env.NewRmnNode([]string{setUpArgs.Env.LocalCluster.DockerNetwork.Name}, nodeName, "rmn", "latest", sharedConfig, localConfig)
+			require.NoError(t, err, "building a RMN node should not fail")
+			setUpArgs.Env.LocalCluster.RmnCluster.Nodes = append(setUpArgs.Env.LocalCluster.RmnCluster.Nodes, node)
+		}
+		lggr.Info().Msg("Starting RMN cluster")
+		setUpArgs.Env.LocalCluster.RmnCluster.Start()
+	}
+	// only required for env and RMN set up
+	setUpArgs.LaneContractsByNetwork = nil
 
 	// start event watchers for all lanes
 	setUpArgs.StartEventWatchers()

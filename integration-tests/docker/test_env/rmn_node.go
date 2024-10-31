@@ -17,7 +17,6 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/docker/test_env"
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/logging"
-	"github.com/smartcontractkit/chainlink-testing-framework/lib/logstream"
 	tc "github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/exec"
 	tcwait "github.com/testcontainers/testcontainers-go/wait"
@@ -33,12 +32,12 @@ type Chain struct {
 	RPCS []string `toml:"rpcs"`
 }
 
-type SharedConfig struct {
+type RmnNodeSharedConfig struct {
 	Chains []SharedChain `toml:"chains"`
 	Lanes  []Lane        `toml:"lanes"`
 }
 
-func (s SharedConfig) afn2ProxySharedConfigFile() (string, error) {
+func (s RmnNodeSharedConfig) afn2ProxySharedConfigFile() (string, error) {
 	data, err := toml.Marshal(s)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal afn2Proxy shared config: %w", err)
@@ -67,6 +66,7 @@ type Duration struct {
 type StabilityConfig struct {
 	Type              string `toml:"type"`
 	SoftConfirmations int    `toml:"soft_confirmations"`
+	HardConfirmations int    `toml:"hard_confirmations,omitempty"`
 }
 
 type FeeConfig struct {
@@ -92,11 +92,11 @@ type Lane struct {
 	CommitStore            string `toml:"commit_store"`
 }
 
-type LocalConfig struct {
+type RmnNodeLocalConfig struct {
 	Chains []Chain `toml:"chains"`
 }
 
-func (l LocalConfig) afn2ProxyLocalConfigFile() (string, error) {
+func (l RmnNodeLocalConfig) afn2ProxyLocalConfigFile() (string, error) {
 	data, err := toml.Marshal(l)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal afn2Proxy local config: %w", err)
@@ -119,8 +119,8 @@ func CreateTempFile(data []byte, pattern string) (string, error) {
 type RmnNode struct {
 	test_env.EnvComponent
 	AFNPassphrase  string
-	Shared         SharedConfig
-	Local          LocalConfig
+	Shared         RmnNodeSharedConfig
+	Local          RmnNodeLocalConfig
 	BlessCurseKeys map[string]BlessCurseKeys
 	t              *testing.T
 	l              zerolog.Logger
@@ -131,9 +131,8 @@ func NewRmnNode(
 	name,
 	imageName,
 	imageVersion string,
-	shared SharedConfig,
-	local LocalConfig,
-	logStream *logstream.LogStream) (*RmnNode, error) {
+	shared RmnNodeSharedConfig,
+	local RmnNodeLocalConfig) (*RmnNode, error) {
 	afnName := fmt.Sprintf("%s-%s", name, uuid.NewString()[0:8])
 	rmn := &RmnNode{
 		EnvComponent: test_env.EnvComponent{
@@ -141,7 +140,6 @@ func NewRmnNode(
 			ContainerImage:   imageName,
 			ContainerVersion: imageVersion,
 			Networks:         networks,
-			LogStream:        logStream,
 		},
 		AFNPassphrase: DefaultAFNPasphrase,
 		Shared:        shared,
