@@ -15,7 +15,7 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/capabilities"
 	"github.com/smartcontractkit/chainlink-common/pkg/logger"
 	registrymock "github.com/smartcontractkit/chainlink-common/pkg/types/core/mocks"
-	"github.com/smartcontractkit/chainlink-common/pkg/values"
+	trigger_test_utils "github.com/smartcontractkit/chainlink/v2/core/capabilities/webapi/triggertestutils"
 
 	"github.com/smartcontractkit/chainlink/v2/core/capabilities/webapi/webapicap"
 	"github.com/smartcontractkit/chainlink/v2/core/internal/testutils"
@@ -43,26 +43,6 @@ type testHarness struct {
 	lggr      logger.Logger
 	config    string
 	trigger   *triggerConnectorHandler
-}
-
-func workflowTriggerConfig(_ testHarness, addresses []string, topics []string) (*values.Map, error) {
-	var rateLimitConfig, err = values.NewMap(map[string]any{
-		"GlobalRPS":      100.0,
-		"GlobalBurst":    101,
-		"PerSenderRPS":   102.0,
-		"PerSenderBurst": 103,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	triggerRegistrationConfig, err := values.NewMap(map[string]interface{}{
-		"RateLimiter":    rateLimitConfig,
-		"AllowedSenders": addresses,
-		"AllowedTopics":  topics,
-		"RequiredParams": []string{"bid", "ask"},
-	})
-	return triggerRegistrationConfig, err
 }
 
 func setup(t *testing.T) testHarness {
@@ -151,7 +131,7 @@ func TestTriggerExecute(t *testing.T) {
 	th := setup(t)
 	ctx := testutils.Context(t)
 	ctx, cancelContext := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
-	Config, _ := workflowTriggerConfig(th, []string{address1}, []string{"daily_price_update", "ad_hoc_price_update"})
+	_, Config, _ := trigger_test_utils.NewWorkflowTriggerConfig([]string{address1}, []string{"daily_price_update", "ad_hoc_price_update"})
 	triggerReq := capabilities.TriggerRegistrationRequest{
 		TriggerID: triggerID1,
 		Metadata: capabilities.RequestMetadata{
@@ -163,7 +143,7 @@ func TestTriggerExecute(t *testing.T) {
 	channel, err := th.trigger.RegisterTrigger(ctx, triggerReq)
 	require.NoError(t, err)
 
-	Config2, err := workflowTriggerConfig(th, []string{address1}, []string{"daily_price_update2", "ad_hoc_price_update"})
+	_, Config2, err := trigger_test_utils.NewWorkflowTriggerConfig([]string{address1}, []string{"daily_price_update2", "ad_hoc_price_update"})
 	require.NoError(t, err)
 
 	triggerReq2 := capabilities.TriggerRegistrationRequest{
@@ -287,7 +267,7 @@ func TestTriggerExecute(t *testing.T) {
 func TestRegisterNoAllowedSenders(t *testing.T) {
 	th := setup(t)
 	ctx := testutils.Context(t)
-	Config, _ := workflowTriggerConfig(th, []string{}, []string{"daily_price_update"})
+	_, Config, _ := trigger_test_utils.NewWorkflowTriggerConfig([]string{}, []string{"daily_price_update"})
 
 	triggerReq := capabilities.TriggerRegistrationRequest{
 		TriggerID: triggerID1,
@@ -307,7 +287,7 @@ func TestTriggerExecute2WorkflowsSameTopicDifferentAllowLists(t *testing.T) {
 	th := setup(t)
 	ctx := testutils.Context(t)
 	ctx, cancelContext := context.WithDeadline(ctx, time.Now().Add(10*time.Second))
-	Config, _ := workflowTriggerConfig(th, []string{address2}, []string{"daily_price_update"})
+	_, Config, _ := trigger_test_utils.NewWorkflowTriggerConfig([]string{address2}, []string{"daily_price_update"})
 	triggerReq := capabilities.TriggerRegistrationRequest{
 		TriggerID: triggerID1,
 		Metadata: capabilities.RequestMetadata{
@@ -319,7 +299,7 @@ func TestTriggerExecute2WorkflowsSameTopicDifferentAllowLists(t *testing.T) {
 	channel, err := th.trigger.RegisterTrigger(ctx, triggerReq)
 	require.NoError(t, err)
 
-	Config2, err := workflowTriggerConfig(th, []string{address1}, []string{"daily_price_update"})
+	_, Config2, err := trigger_test_utils.NewWorkflowTriggerConfig([]string{address1}, []string{"daily_price_update"})
 	require.NoError(t, err)
 
 	triggerReq2 := capabilities.TriggerRegistrationRequest{
@@ -363,7 +343,7 @@ func TestTriggerExecute2WorkflowsSameTopicDifferentAllowLists(t *testing.T) {
 func TestRegisterUnregister(t *testing.T) {
 	th := setup(t)
 	ctx := testutils.Context(t)
-	Config, err := workflowTriggerConfig(th, []string{address1}, []string{"daily_price_update"})
+	_, Config, err := trigger_test_utils.NewWorkflowTriggerConfig([]string{address1}, []string{"daily_price_update"})
 	require.NoError(t, err)
 
 	triggerReq := capabilities.TriggerRegistrationRequest{

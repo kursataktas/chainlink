@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
+	"time"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 
@@ -13,6 +15,8 @@ import (
 	"github.com/smartcontractkit/chainlink-common/pkg/services"
 	"github.com/smartcontractkit/chainlink-common/pkg/types/core"
 	"github.com/smartcontractkit/chainlink-common/pkg/values"
+
+	"github.com/smartcontractkit/chainlink/v2/common/types"
 
 	"github.com/smartcontractkit/chainlink/v2/core/capabilities/webapi/webapicap"
 	"github.com/smartcontractkit/chainlink/v2/core/logger"
@@ -23,6 +27,7 @@ import (
 )
 
 const defaultSendChannelBufferSize = 1000
+const updateGatewayIntervalS = 60
 
 const TriggerType = "web-api-trigger@1.0.0"
 
@@ -38,6 +43,7 @@ type webapiTrigger struct {
 	ch             chan<- capabilities.TriggerResponse
 	config         webapicap.TriggerConfig
 	rateLimiter    *common.RateLimiter
+	rawConfig      *values.Map
 }
 
 type triggerConnectorHandler struct {
@@ -50,6 +56,7 @@ type triggerConnectorHandler struct {
 	mu                  sync.Mutex
 	registeredWorkflows map[string]webapiTrigger
 	registry            core.CapabilitiesRegistry
+	wg                  sync.WaitGroup
 }
 
 var _ capabilities.TriggerCapability = (*triggerConnectorHandler)(nil)
@@ -171,6 +178,56 @@ func (h *triggerConnectorHandler) HandleGatewayMessage(ctx context.Context, gate
 	}
 }
 
+// Periodically update the gateways with the state of the workflow triggers.
+func (h *triggerConnectorHandler) loop(ctx context.Context) {
+	defer h.wg.Done()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Duration(updateGatewayIntervalS) * time.Millisecond):
+			err := h.updateGateways(ctx)
+			if err != nil {
+				h.lggr.Errorw("error updating gateways", "err", err)
+			}
+		}
+	}
+}
+
+func (h *triggerConnectorHandler) updateGateways(ctx context.Context) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	var workflowConfigs = make(map[string]*values.Map)
+	for triggerID, trigger := range h.registeredWorkflows {
+		workflowConfigs[triggerID] = trigger.rawConfig
+	}
+
+	payloadJSON, err := json.Marshal(workflowConfigs)
+	if err != nil {
+		h.lggr.Errorw("error marshalling payload", "err", err)
+		payloadJSON, _ = json.Marshal(ghcapabilities.TriggerResponsePayload{Status: "ERROR", ErrorMessage: fmt.Errorf("error %s marshalling payload", err.Error()).Error()})
+	}
+	for gatewayID := range h.connector.GatewayIDs() {
+		// convert gatewayID to string
+
+		gatewayIDStr := strconv.Itoa(gatewayID)
+		body := api.MessageBody{
+			MessageId: types.RandomID().String(),
+			DonId:     h.connector.DonID(),
+			Method:    ghcapabilities.MethodWebAPITriggerUpdateMetadata,
+			Receiver:  gatewayIDStr,
+			Payload:   payloadJSON,
+		}
+		err = h.connector.SignAndSendToGateway(ctx, gatewayIDStr, &body)
+		if err != nil {
+			h.lggr.Errorw("error sending message", "err", err)
+		}
+	}
+	return nil
+}
+
 func (h *triggerConnectorHandler) RegisterTrigger(ctx context.Context, req capabilities.TriggerRegistrationRequest) (<-chan capabilities.TriggerResponse, error) {
 	cfg := req.Config
 	if cfg == nil {
@@ -251,11 +308,14 @@ func (h *triggerConnectorHandler) Start(ctx context.Context) error {
 		return err
 	}
 	return h.StartOnce("GatewayConnectorServiceWrapper", func() error {
+		h.wg.Add(1)
+		go h.loop(ctx)
 		return h.connector.AddHandler([]string{"web_api_trigger"}, h)
 	})
 }
 func (h *triggerConnectorHandler) Close() error {
 	return h.StopOnce("GatewayConnectorServiceWrapper", func() error {
+		h.wg.Wait()
 		return nil
 	})
 }
