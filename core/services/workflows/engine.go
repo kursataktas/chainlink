@@ -346,6 +346,7 @@ func (e *Engine) init(ctx context.Context) {
 	}
 
 	e.logger.Info("engine initialized")
+	logCustMsg(e.cma, "workflow registered", e.logger)
 	e.afterInit(true)
 }
 
@@ -719,10 +720,14 @@ func (e *Engine) worker(ctx context.Context) {
 				continue
 			}
 
+			cma := e.cma.With(eIDKey, executionID)
+			logCustMsg(cma, "starting execution on a trigger event", e.logger)
 			err = e.startExecution(ctx, executionID, resp.Event.Outputs)
 			if err != nil {
 				e.logger.With(eIDKey, executionID).Errorf("failed to start execution: %v", err)
+				logCustMsg(cma, fmt.Sprintf("failed to start execution: %s", err), e.logger)
 			}
+			logCustMsg(cma, "execution started", e.logger)
 		case <-ctx.Done():
 			return
 		}
@@ -1106,7 +1111,7 @@ func (e *Engine) Close() error {
 		if err != nil {
 			return err
 		}
-
+		logCustMsg(e.cma, "workflow unregistered", e.logger)
 		return nil
 	})
 }
@@ -1199,6 +1204,8 @@ func NewEngine(cfg Config) (engine *Engine, err error) {
 
 	workflow, err := Parse(cfg.Workflow)
 	if err != nil {
+		cma := custmsg.NewLabeler().With(wIDKey, cfg.WorkflowID, woIDKey, cfg.WorkflowOwner, wnKey, cfg.WorkflowName)
+		logCustMsg(cma, fmt.Sprintf("failed to parse workflow: %s", err), cfg.Lggr)
 		return nil, err
 	}
 
