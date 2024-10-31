@@ -177,6 +177,19 @@ func (tc *telemetryIngressClient) Send(ctx context.Context, telemData []byte, co
 		ContractID: contractID,
 	}
 
+	telemReq := &telemPb.TelemRequest{
+		Telemetry:     payload.Telemetry,
+		Address:       payload.ContractID,
+		TelemetryType: string(payload.TelemType),
+		SentAt:        time.Now().UnixNano(),
+	}
+	t, err := tc.telemClient.Telem(ctx, telemReq)
+	if err != nil {
+		tc.eng.Errorf("TELEM INGRESS SEND Could not send telemetry: %v", err)
+		return
+	}
+	tc.eng.Infow("TELEM INGRESS SEND Successfully sent telemetry to ingress server", "contractID", payload.ContractID, "telemetry", payload.Telemetry, "t", t)
+
 	select {
 	case tc.chTelemetry <- payload:
 		tc.dropMessageCount.Store(0)
